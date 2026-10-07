@@ -1,0 +1,30 @@
+\begin{table}[t]
+\centering
+\caption{Recurring context cost and equivalent-context accuracy. Top: seconds to score 1{,}000 rows at representative TabPFN-2.5 contexts. Bottom: for a correction fitted at 1{,}000 context rows, the frozen context needed to match its test loss and the corresponding recurring cost multiplier. Scan fitting is one-time (median 7.0\,s on one CPU core at a 1{,}000-row context).}
+\label{tab:cost}
+\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrr}
+\toprule
+Context & 500 & 1k & 2k & 4k & 15k \\
+\midrule
+CPU (s) & 21 & 33 & 56 & 139 & 1{,}017 \\
+T4 GPU (s) & 1.0 & 1.4 & 2.3 & 5.1 & 38.9 \\
+\bottomrule
+\end{tabular}
+\\[4pt]
+\begin{tabular}{llrrr}
+\toprule
+Data & Fix at 1k & Equiv.\ context & CPU & T4 \\
+\midrule
+Planted & Platt & 1,238 & 1.2$\times$ & 1.2$\times$ \\
+ & Scan & 4,175 & 4.4$\times$ & 3.8$\times$ \\
+ & Platt$\to$scan & 2,973 & 2.7$\times$ & 2.4$\times$ \\
+ & Boosted corrector & 3,411 & 3.3$\times$ & 2.9$\times$ \\
+\midrule
+Credit & Platt & 1,292 & 1.2$\times$ & 1.2$\times$ \\
+ & Scan & 2,152 & 1.8$\times$ & 1.7$\times$ \\
+ & Platt$\to$scan & 2,225 & 1.9$\times$ & 1.8$\times$ \\
+ & Boosted corrector & 4,140 & 4.4$\times$ & 3.7$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}

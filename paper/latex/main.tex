@@ -1,0 +1,539 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{xcolor}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\makeatletter\setlength{\@fptop}{0pt}\makeatother
+\input{numbers.tex}
+\input{numbers_ladder.tex}
+\input{numbers_bench.tex}
+
+\begin{document}
+
+\title{Fix What the Model Leaves Behind:\\Fast Subgroup Repair for Tree Ensembles\\and Tabular Foundation Models}
+
+% AccML submissions are NOT anonymised: replace with real names and affiliations.
+\author{\IEEEauthorblockN{Author Name(s)}
+\IEEEauthorblockA{Affiliation(s)\\
+email@institution}}
+
+\maketitle
+
+\begin{abstract}
+Tabular risk models are deployed as they are: a gradient-boosted ensemble after tuning, or a
+tabular foundation model that predicts from labelled rows in its context. Either can be accurate
+on average yet systematically wrong for a subgroup defined by a combination of features.
+Structured Scan Repair is a post-hoc layer that searches interpretable multi-feature subgroups for
+large exact Bernoulli-likelihood gains from a common log-odds shift, validates proposed corrections
+on held-out data, and applies a few readable shifts or abstains; the base model itself is never
+changed. Across four strong frozen base models (tuned XGBoost and CatBoost, TabPFN-2.5 and
+TabICLv2), a planted subgroup error survives base-model construction and global recalibration.
+Given enough data to search, the repair removes \DBiasRedLo--\DBiasRedHi\% of it and recovers
+\DShareLo--\DShareHi\% of the best possible one-rule gain for every model, without significant
+average harm when no subgroup effect is planted. Foundation models add a second lever: more
+context, paid for on every prediction. On a context ladder from 500 rows to the full training set,
+the repair at 1{,}000 rows matches TabPFN-2.5 at \CrEqScan{} rows on Credit Default and
+\PlEqScan{} rows on the planted subgroup, making each prediction \CrEqScanCpu--\PlEqScanCpu$\times$
+cheaper on a CPU than the matching context. It preferentially flags observations that benefit from
+additional context and moves their predictions in the same direction. The advantage is in recurring
+compute: with unlimited compute, placing the held-out labels in the context is more accurate. Compiled, batched scoring makes a fit take seconds on one CPU
+core with bit-identical repairs.
+\end{abstract}
+
+\begin{IEEEkeywords}
+post-hoc model repair, subset scanning, calibration, gradient boosting, tabular foundation models,
+in-context learning, inference cost, CPU inference
+\end{IEEEkeywords}
+
+%=====================================================================
+\section{Introduction}
+%=====================================================================
+Credit scoring, readmission and churn are standard supervised tabular prediction problems.
+Gradient-boosted trees such as XGBoost and CatBoost~\cite{chen2016xgboost,prokhorenkova2018catboost}
+remain strong conventional approaches~\cite{grinsztajn2022tree}. Tabular foundation models such as
+TabPFN~\cite{hollmann2023tabpfn,hollmann2025nature,grinsztajn2025tabpfn25} and
+TabICL~\cite{qu2025tabicl,qu2026tabiclv2} instead use pretrained transformers to predict new rows
+from labelled examples supplied in context, without updating their pretrained weights; they are now
+competitive with tuned trees~\cite{erickson2025tabarena}. Although the two paradigms construct
+predictions differently, once configured both expose the same downstream object: a probability or
+logit for each observation. This creates a common interface for asking whether residual predictive
+errors can be corrected without modifying the underlying predictor.
+
+A model can be well calibrated on average and still be systematically wrong for a subgroup defined
+by a \emph{combination} of features, an error that optimization of average loss need not remove.
+Global recalibration (temperature scaling~\cite{guo2017calibration}, Platt~\cite{platt1999},
+beta~\cite{kull2017beta}, isotonic regression~\cite{zadrozny2002}, histogram
+binning~\cite{zadrozny2001}) applies one common transformation to all predictions and therefore
+cannot selectively correct one subgroup without changing predictions elsewhere. Multicalibration,
+multiaccuracy and flexible residual learners~\cite{hebert2018multicalibration,kim2019multiaccuracy,tax2026mcgrad}
+can correct richer residual structure, but they do not impose the same design goal of returning a
+small set of interpretable subgroup shifts that are independently validated and explicitly rejected
+when evidence is insufficient. Slice finders~\cite{chung2019slicefinder,sagadeeva2021sliceline}
+locate high-loss subsets without repairing them, while predictive-bias scanning~\cite{zhang2016bias},
+built on subset scanning~\cite{neill2012fast}, stops at detection. Structured Scan Repair closes
+this audit-to-action gap: it searches original features for compact subgroup rules, estimates the
+exact likelihood benefit of a log-odds correction, validates that correction independently, and
+applies it only if the evidence survives.
+
+We ask two research questions.
+\begin{itemize}
+\item \textbf{RQ1} (Sec.~\ref{sec:general}). \emph{Does structured repair work across strong
+tabular model families?} Tuned XGBoost and CatBoost, TabPFN-2.5 and TabICLv2 all leave the planted
+localized error. With sufficient discovery data, Structured Scan removes most of it across all four
+backbones without significant average harm when no subgroup effect is planted. In the controlled
+planted setting, apparent failures at smaller discovery samples arise from insufficient evidence to
+recover the subgroup rather than from absence of the residual.
+\item \textbf{RQ2} (Sec.~\ref{sec:ladder}). \emph{For an in-context model, when can repair
+substitute for more context?} On a ladder of nested contexts, the repair at 1{,}000 rows matches
+TabPFN-2.5 at \CrEqScan--\PlEqScan{} rows, \CrEqScanCpu--\PlEqScanCpu$\times$ cheaper per
+prediction on a CPU, and preferentially targets observations that additional context later improves.
+As the context grows and the repair opportunity shrinks, it steps aside.
+\end{itemize}
+The trade in RQ2 needs a repair that is cheap and exact: compiled, batched and parallel candidate
+scoring speeds the search \SpBatMin--\SpBatMax$\times$ with bit-identical repairs
+(Sec.~\ref{sec:systems}).
+%=====================================================================
+\section{Structured Scan Repair}\label{sec:method}
+%=====================================================================
+\textbf{Setting.} A frozen probabilistic classifier outputs a logit $F(x)$ and probability
+$p(x)=\sigma(F(x))$. Once repair begins, the base model is never updated: only additive subgroup
+shifts are learned. Labelled observations not used to construct the base predictor are partitioned
+into \emph{discovery}, \emph{selection} and \emph{test} sets. A subgroup $S$ is an interpretable
+conjunction of literals on the original features (numeric thresholds or categorical subsets). After
+$T$ accepted corrections, the repaired predictor is
+\begin{equation}\label{eq:repair}
+F_R(x) = F(x) + \textstyle\sum_{t=1}^{T} \delta_t\, \mathbf{1}[x\in S_t].
+\end{equation}
+
+\textbf{Score.} For a candidate subgroup $S$, Structured Scan asks how much the Bernoulli
+log-likelihood would improve if every member of $S$ received the same log-odds shift $\delta$:
+\begin{equation}\label{eq:gain}
+\Delta(S,\delta) = \sum_{i\in S}\Big[y_i\delta - \log\big(1-p_i+e^{\delta}p_i\big)\Big].
+\end{equation}
+The objective is concave in $\delta$, so Newton iteration gives
+$\Delta^\star(S)=\max_\delta\Delta(S,\delta)$. At the optimum,
+$\sum_{i\in S}[y_i-\sigma(F_i+\delta)]=0$, so the mean repaired probability within $S$ matches
+its observed event rate. The statistic is inherited from predictive-bias scanning~\cite{zhang2016bias};
+here it is used not only to detect a biased subgroup but to estimate its correction.
+
+\textbf{Search.} Exhaustively enumerating multi-feature conjunctions is infeasible, so rules grow
+one literal at a time in a diversity-aware beam (width 24, maximum depth 5). For a numeric feature
+under a parent rule, candidate thresholds are first ranked by the second-order proxy
+$\tfrac12 G^2/H$, where $G$ and $H$ are prefix sums of $p_i-y_i$ and $p_i(1-p_i)$ over the sorted
+feature. Only a shortlist is evaluated using the exact likelihood gain in~\eqref{eq:gain}.
+Categorical levels are ordered so that only prefix subsets need be considered.
+
+\textbf{Validation and abstention.} Discovery proposes candidate rules; selection determines
+whether any is sufficiently stable to apply. Each candidate is independently refitted on two
+stratified halves $V_1,V_2$ of the selection set. Candidates are retained only when they improve
+likelihood on both halves and the fitted shifts have the same sign. Among these, the scanner selects
+the rule maximizing the smaller per-row gain across the two halves. A nominal one-degree-of-freedom
+likelihood-ratio test for $\delta=0$ is then applied to this single rule on the complete selection
+set at $\alpha=0.05$. If it fails, the round terminates; the algorithm does not fall back to a
+runner-up. On real data, accepted rules are additionally audited on the test set: subgroup residual
+must shrink, removing the rule must worsen test log-loss, and the rule must beat the 95th percentile
+of 500 score-matched placebo subgroups. This audit is diagnostic and does not alter the fitted
+repair.
+
+\textbf{Iterative repair.} Structured Scan performs at most four rounds. After an accepted rule is
+added, all accepted shifts are jointly refitted on selection data with $F$ as a fixed offset and an
+$\ell_2$ coefficient penalty of $10^{-3}$. The updated residuals are then scanned again. The process
+stops at the first round with no stable candidate or when the selected rule fails the whole-selection
+test. Only the subgroup terms in~\eqref{eq:repair} are learned; the parameters, structure and, for
+an in-context model, context of the base predictor remain unchanged.
+
+\textbf{Two-stage variant.} Platt$\to$scan fits Platt scaling on discovery data and then applies
+Structured Scan to the recalibrated logits; the selection set remains reserved for validating
+candidate subgroup corrections. This variant removes a global calibration component before searching
+for localized residual structure.
+
+\textbf{What a correction does.} Inside a selected subgroup, adding $\delta$ to the logit
+multiplies predicted odds by $e^{\delta}$; observations outside the subgroup are unchanged and
+ranking within the subgroup is preserved. Thus a fitted repair is a small collection of explicit
+subgroup rules and one scalar shift per rule rather than a second high-capacity predictor.
+
+Algorithm~\ref{alg:ssr} summarizes the fitting procedure. Base-model construction ends before
+repair begins; discovery proposes rules, selection decides whether they survive and estimates their
+shifts, and test labels are reserved for evaluation and, on real data, the diagnostic audit.
+
+\begin{algorithm}[!t]
+\caption{Structured Scan Repair of a frozen classifier}
+\label{alg:ssr}
+\small
+\begin{algorithmic}[1]
+\Require Frozen logit $F$; discovery $D$; selection $V=V_1\cup V_2$ (stratified halves);
+$T=4$; beam width 24; depth $\leq5$; $\alpha=0.05$; $\ell_2$ penalty $\lambda=10^{-3}$
+\Ensure Repaired logit $F_R$ and rule set $\mathcal R$ (possibly empty)
+\State $\mathcal R\gets\emptyset$; $F_R\gets F$
+\For{$t=1,\ldots,T$}
+    \State $\mathcal C\gets$ beam-search rules on $D$, offset $F_R$
+    \State for each $S\in\mathcal C$: $(g_h,\hat\delta_h)\gets$ maximize~\eqref{eq:gain} on $V_h$, $h=1,2$
+    \State $\mathcal A\gets\{S\in\mathcal C:\ g_1,g_2>0,\ \operatorname{sign}\hat\delta_1=\operatorname{sign}\hat\delta_2\}$
+    \If{$\mathcal A=\emptyset$}
+        \State \textbf{break} \Comment{abstain from further repair}
+    \EndIf
+    \State $S_t\gets\arg\max_{S\in\mathcal A}\min_h g_h(S)/|V_h|$ \Comment{most stable}
+    \State $p_{\mathrm{LR}}\gets$ nominal 1-df LR $p$-value for $S_t$ on all of $V$
+    \If{$p_{\mathrm{LR}}\ge\alpha$}
+        \State \textbf{break} \Comment{reject; no runner-up fallback}
+    \EndIf
+    \State $\mathcal R\gets\mathcal R\cup\{S_t\}$
+    \State $\boldsymbol\delta\gets\arg\max\,\ell_V\big(F+\sum_{j\le t}\delta_j\mathbf{1}[x\in S_j]\big)
+    -\tfrac{\lambda}{2}\|\boldsymbol\delta\|^2$
+    \State $F_R(x)\gets F(x)+\sum_{j\le t}\delta_j\mathbf{1}[x\in S_j]$
+\EndFor
+\State \Return $F_R,\mathcal R$
+\end{algorithmic}
+\end{algorithm}
+%=====================================================================
+\section{Experimental Setup}\label{sec:setup}
+%=====================================================================
+\textbf{Data and splits.} The controlled synthetic benchmark has $n=12{,}000$ observations and
+$p=30$ independent features $X_j\sim\mathrm{Uniform}(0,1)$. A background signal uses the next six
+features after the planted-rule variables, with coefficients
+$\beta=(1,-0.8,0.7,-0.6,0.5,-0.4)$ applied to centered covariates $2X-1$; the intercept is solved so
+that marginal event prevalence is 10\%. The planted subgroup is
+$S^*=\{X_1>c,\ldots,X_5>c\}$ with $c=1-0.08^{1/5}\approx0.397$, giving 8\% expected support.
+Outcomes follow a Bernoulli logistic model whose logit adds $\log(8)\mathbf{1}[S^*]$ in the planted
+condition. The no-planted-effect control uses the same generator with subgroup odds ratio 1: the
+six-feature background signal remains, but the additional conjunction effect is absent. Both use
+6{,}000 observations for base-model construction and 2{,}400/1{,}800/1{,}800 for
+ discovery/selection/test. \emph{Credit Default}~\cite{yeh2009credit} contains 30{,}000 clients and
+23 predictors (3 categorical); 15{,}000 observations construct the base model and
+6{,}000/4{,}500/4{,}500 form discovery/selection/test. We use ten seeds per setting; within each
+seed, every base model and correction uses the same partition. Each synthetic seed is a fresh draw
+from the generator; on Credit the 4{,}500 test rows are fixed and the seeds re-partition the
+remaining rows.
+
+\textbf{Strong frozen base configurations.} XGBoost and CatBoost are tuned once per dataset by
+5-fold cross-validated random search over 25 configurations (log-loss, early stopping) on the first
+seed's model-building partition; the selected hyperparameters are then refitted on each seed's
+model-building partition and frozen. Tuning never uses test rows. TabPFN-2.5~\cite{grinsztajn2025tabpfn25}
+(\texttt{tabpfn} 9.1.0) and TabICLv2~\cite{qu2026tabiclv2} (\texttt{tabicl} 2.2.0) use their
+released default configurations and receive the complete model-building split as labelled context.
+These protocols provide strong representative configurations rather than exhaustive optimization of
+each family. Once base prediction is complete, every model is treated identically by the correction
+layer: it receives original features, labels and that model's frozen logits on the common correction
+partitions.
+
+\textbf{Preprocessing.} Credit Default has no missing values. Its three categorical variables are
+integer-coded using the categories seen in the model-building rows. XGBoost receives these codes as
+numeric features; CatBoost, TabPFN-2.5 and TabICLv2 receive them marked as categorical. Scan rules
+are reported in the original named feature space. No preprocessing step uses test labels.
+
+\textbf{Post-hoc comparators.} Every correction receives the same correction-data budget; its own
+fitting and validation use the common discovery and selection partitions. We evaluate temperature
+scaling, Platt scaling, beta calibration, isotonic regression, 15-bin equal-mass histogram binning,
+a single residual tree (maximum depth 3, selected on the selection data), a boosted residual
+corrector (gradient-boosted trees fitted from the frozen base logit and early-stopped on selection;
+median 63--161 leaves per setting), Structured Scan Repair, and Platt$\to$scan. Table~\ref{tab:bench} reports the full cross-model battery; the complete context-ladder table is released with the source.
+
+\textbf{Evaluation and statistical analysis.} The primary metric is test log-loss (LL), reported
+absolutely and as improvement over the corresponding frozen base model. For the planted condition
+we additionally report absolute residual bias on $S^*$, the \emph{oracle} gain obtained by applying
+the optimal one-rule shift to the known subgroup, and Jaccard overlap between the detected and true
+subgroups. On Credit we report the held-out audit pass rate; harm counts seeds whose
+correction increases test log-loss. Across the ten matched seeds, figures report paired 95\%
+confidence intervals where shown, and starred table entries use two-sided paired $t$-tests at
+$p<0.05$. These $p$-values are descriptive and are not multiplicity-adjusted.
+%=====================================================================
+\section{Structured Repair Across Model Families}\label{sec:general}
+%=====================================================================
+\input{tab_bench.tex}
+
+\subsection{Strong predictors leave a common localized residual}
+Table~\ref{tab:bench} compares the four frozen base configurations under the standard correction-data
+budget. On the planted benchmark their overall test log-loss is similar, yet all four retain
+substantial error on the known subgroup: absolute residual bias is \BBiasLo--\BBiasHi, and
+correcting the true subgroup with its optimal one-rule shift would improve test log-loss by
+\BOracleLo--\BOracleHi$\times10^{-3}$. Global recalibration changes this localized error only
+modestly; Platt, beta and isotonic reduce subgroup bias by \BCalRedLo--\BCalRedHi\%. With only 2{,}400 discovery
+observations, however, Structured Scan does not recover the subgroup reliably: it accepts a rule in
+\BXgbPlRep{} XGBoost, \BCatPlRep{} CatBoost, \BIclPlRep{} TabICLv2 and \BPfnPlRep{} TabPFN-2.5
+runs. Consequently, its mean gains at this discovery size are small, whereas Platt$\to$scan gives
+the largest mean improvement on the planted condition for all four backbones.
+
+\subsection{Repairability is not the same as detectability}
+The weak 2{,}400-row result does not mean that the tree backbones have absorbed the planted
+structure. The true subgroup remains worth a similar discovery-set likelihood gain under all four
+models (13--17 nats on average). The difficulty is statistical: identifying a five-feature
+conjunction among 30 variables from 2{,}400 observations leaves many chance patterns with competitive
+scores. We therefore repeat the experiment on a separate $n=19{,}200$ draw and, within that draw,
+hold the frozen base models, selection set and test set fixed while varying only the scan's discovery
+sample from 2{,}400 to 9{,}600 observations (Table~\ref{tab:disc}, Fig.~\ref{fig:disc}).
+
+With 9{,}600 discovery observations, the earlier backbone dependence largely disappears. Structured
+Scan accepts a repair in \DRepLo--10 of 10 runs for every model, recovers
+\DShareLo--\DShareHi\% of the best available one-rule gain, and identifies rules with Jaccard
+\DJacLo--\DJacHi{} overlap with the true subgroup. The correction reduces absolute subgroup bias
+from \DBiasFLo--\DBiasFHi{} to \DBiasSLo--\DBiasSHi, a \DBiasRedLo--\DBiasRedHi\% reduction.
+In the matched no-planted-effect control, increasing discovery data does not produce a corresponding
+increase in harm: mean Scan gain remains within $\pm$\DNullAbsMax$\times10^{-3}$, with at most
+\DNullHarmMax{} harmful seeds. In this controlled setting, the main limitation at the smaller
+discovery size is detectability rather than absence of repairable residual structure.
+
+\input{tab_disc.tex}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig_disc.pdf}
+\caption{Model-agnostic recovery of the planted subgroup in the separate $n=19{,}200$ discovery-power
+experiment (test-set absolute residual, mean over 10 seeds; lower is better). Grey circles are frozen
+base models; orange squares are Platt; light and dark blue diamonds are Structured Scan with 2{,}400
+and 9{,}600 discovery rows; black ticks are the known subgroup with its optimal one-rule shift. The
+larger discovery sample moves all four backbones toward the oracle.}
+\label{fig:disc}
+\end{figure}
+
+\subsection{When little structured residual remains, the scan mostly abstains}
+Credit Default presents a different regime. The two foundation models give the strongest frozen
+predictions (test LL \BPfnCrLL--\BIclCrLL; AUROC \BPfnCrAUC--\BIclCrAUC), compared with LL
+\BXgbCrLL--\BCatCrLL{} for the tuned trees. Across all four backbones, Structured Scan finds little
+validated localized residual: it intervenes in only \BCatCrRep--\BPfnCrRep{} runs and changes mean
+test log-loss by at most $0.3\times10^{-3}$. The foundation models instead retain modest global
+miscalibration, for which Platt and beta improve log-loss by approximately
+$1.3$--$1.5\times10^{-3}$; corresponding gains for the tuned trees are at most
+$0.2\times10^{-3}$.
+
+The no-planted-effect control shows the same distinction: global recalibration still helps the
+foundation models, whereas Scan has near-zero average effect. Across the full correction battery,
+isotonic regression and histogram binning tend to overfit, while the boosted residual corrector is
+positive in all 12 model--dataset settings and is strongest among the alternatives for several
+Credit and control settings. That gain comes from a substantially higher-capacity correction,
+typically tens to hundreds of leaves, whereas Structured Scan seeks a small number of named,
+held-out-validated subgroup shifts and can return the frozen model unchanged. Thus, when a strong
+in-distribution predictor leaves little confirmed localized structure, abstention is part of the
+intended behaviour rather than a failed repair.
+%=====================================================================
+\section{When Should We Repair Rather Than Buy More Context?}\label{sec:ladder}
+%=====================================================================
+Section~\ref{sec:general} established that the repair is not tied to one model family. We now
+narrow to TabPFN-2.5 because context size provides a direct knob for increasing predictive
+capability while also increasing recurring inference cost. On a 2-core CPU, TabPFN-2.5 scores
+1{,}000 rows in \CpuSecOne\,s from a 1{,}000-row context and in \CpuSecFull\,s from 15{,}000 rows
+(\CpuFullOverOne$\times$); a T4 GPU is faster but scales similarly (\GpuSecOne\,s vs.\
+\GpuSecFull\,s). We therefore run TabPFN-2.5 on a \emph{ladder} of nested contexts: for each seed,
+the model-building split is shuffled once and context $k$ is its first $k$ rows,
+$k\in\{500,1\text{k},1.5\text{k},2\text{k},3\text{k},4\text{k},6\text{k},8\text{k},10\text{k}\}$
+and full. Logits are saved once per (dataset, seed, $k$); every correction is then fitted on CPU
+using the standard correction splits of Sec.~\ref{sec:setup}. This ladder is separate from the
+larger discovery-power experiment in Table~\ref{tab:disc}; its numbers should not be chained with
+that experiment.
+
+\subsection{Context reduces the repair opportunity}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{fig_gain_ladder.pdf}
+\caption{Held-out log-loss improvement over frozen TabPFN-2.5 at the same context (mean and paired
+95\% CI over 10 seeds; positive is better). The panels show the planted subgroup, the matched
+no-planted-effect control, and Credit Default. Global Platt recalibration gives modest gains, whereas
+local or flexible corrections can give larger gains at small contexts. Structured Scan contracts as
+context grows, tracking the shrinking oracle opportunity in the planted setting.}
+\label{fig:gain}
+\end{figure*}
+
+Fig.~\ref{fig:gain} shows the main corrections across context; the full correction-by-context table is released with the source. On the planted problem, Structured
+Scan improves test log-loss by \PlOneScan$\times10^{-3}$ $[\PlOneScanLo,\PlOneScanHi]$ at 1{,}000
+context rows, compared with \PlOnePlatt{} for Platt, and captures
+\PlOracleShareLo--\PlOracleShareHi\% of the oracle one-rule gain at 500--1{,}000 rows. From 1{,}000
+rows onward it matches or exceeds the boosted residual corrector on this structured error. On Credit,
+Scan gains \CrFiveScan{} at 500 rows and \CrOneScan{} $[\CrOneScanLo,\CrOneScanHi]$ at 1{,}000 rows,
+although the boosted residual corrector gives the largest raw log-loss improvement throughout the
+ladder.
+
+The decline in Scan gain at larger contexts reflects a shrinking target rather than simply poorer
+search. On the planted benchmark, frozen subgroup bias falls from \PlFiveResFrozen{} at 500 context
+rows to \PlFullResFrozen{} at full context, while the oracle one-rule gain falls from
+\PlFiveOracle{} to \PlFullOracle$\times10^{-3}$. Scan captures approximately 40--73\% of this
+remaining one-rule opportunity across the ladder (Table~\ref{tab:diag}). At full context its mean
+gain is only \PlFullScan{} on the planted problem and \CrFullScan{} on Credit, neither statistically
+significant.
+
+\input{tab_ladder_diag.tex}
+
+\subsection{The scan targets many of the errors that more context later reduces}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig_attribution.pdf}
+\caption{Row-level attribution of the benefit from full TabPFN context (mean and 95\% CI over 10
+seeds). Top: full-context improvement concentrated in rows flagged by Scan, divided by their share
+of rows; $1\times$ is the random-row baseline. Bottom: fraction of corrected rows whose logit moves
+in the same direction as the full-context model; 0.5 is chance. Platt is shown as a global-calibration
+reference.}
+\label{fig:attr}
+\end{figure}
+
+Similar aggregate log-loss does not by itself show that repair and additional context address the
+same deficits. We therefore compare TabPFN at each context $k$ with the corresponding full-context
+predictor row by row (Fig.~\ref{fig:attr}). Observations flagged by Structured Scan receive
+\PlConcLo--\PlConcHi$\times$ their expected share of the improvement delivered by full context on
+the planted problem, and \CrConcLo--\CrConcHi$\times$ on Credit for $k\le4$k; random rows would
+receive $1\times$. At 500--1{,}000 context rows, Scan moves corrected logits in the same direction
+as the full-context model in \PlSignLo--\PlSignHi\% of planted cases and
+\CrSignLo--\CrSignHi\% of Credit cases. Platt's global transformation agrees in only
+\PlattSignLo--\PlattSignHi\% of rows, approximately the chance baseline. This alignment weakens as
+$k$ approaches full context and little incremental improvement remains. Thus, at constrained
+contexts, Structured Scan preferentially identifies observations that later benefit from additional
+context rather than merely producing a similar average loss.
+
+\textbf{Resource accounting.} Repair and additional context use labelled data differently. A
+repaired 1{,}000-row TabPFN uses held-out discovery and selection labels once to estimate its
+post-hoc correction, whereas a larger frozen TabPFN places additional labelled rows directly in
+context and pays for them on every subsequent prediction. The comparison below is therefore a
+deployment-compute trade-off conditional on available labelled monitoring data, not a claim of equal
+label consumption. All post-hoc corrections use the same discovery and selection resources. If all
+held-out rows are instead placed into context (\PlLabCtx{} rows on the planted data, \CrLabCtx{} on
+Credit), the frozen model is more accurate (test LL about \PlLabLL{} and \CrLabLL{}) but costs
+\PlLabCpu$\times$ and \CrLabCpu$\times$ more CPU inference per prediction than the 1{,}000-row
+model (\PlLabGpu$\times$ and \CrLabGpu$\times$ on the T4). Repair does not dominate context when
+compute is free; its advantage is recurring compute when context is constrained by latency, memory
+or a CPU budget.
+
+\subsection{Repair versus context on the compute frontier}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{fig_frontier.pdf}
+\caption{Test log-loss versus recurring TabPFN-2.5 prediction cost on a 2-core CPU; labels denote
+context size. Post-hoc corrections are fitted once, so their one-time fit cost is excluded from the
+horizontal axis and their recurring cost is essentially that of the underlying context. Dotted line
+and open circle mark the frozen context whose loss matches Structured Scan applied at 1{,}000 rows.}
+\label{fig:frontier}
+\end{figure*}
+
+\input{tab_ladder_cost.tex}
+
+Because a fitted subgroup repair adds only a few rule comparisons at inference, its recurring cost
+is essentially that of the underlying small-context TabPFN. Figure~\ref{fig:frontier} therefore
+compares predictive loss with recurring prediction cost. At a 1{,}000-row context, Structured Scan
+reaches a Credit test loss matched by the uncorrected model only at \CrEqScan{} context rows, and a
+planted-subgroup loss matched at \PlEqScan{} rows. Achieving the same loss through additional
+context makes each CPU prediction \CrEqScanCpu$\times$ and \PlEqScanCpu$\times$ more expensive,
+respectively (\CrEqScanGpu$\times$ and \PlEqScanGpu$\times$ on the T4), whereas Scan requires a
+one-time median CPU fit of \ScanSecOneMed\,s at this context. Platt buys only about
+\PlEqPlattX--\CrEqPlattX$\times$ context. The boosted residual corrector buys more effective
+context than Scan on Credit (\CrEqXgb{} rows versus \CrEqScan{}) but less on the planted structured
+problem (\PlEqXgb{} versus \PlEqScan{}). These results define an operating regime rather than a
+universal dominance claim: structured repair is attractive when additional context improves
+accuracy but recurring context cost is the binding resource.
+
+\subsection{Abstention as the model strengthens}
+As confirmed localized residual structure disappears, a selective repair should intervene less. On
+Credit, the fraction of seeds with an accepted Scan rule falls from \CrFiveInterv{} at 500 rows to
+\CrFullInterv{} at full context, while the fraction of accepted rules passing the audit falls from
+\CrFiveAudit{} to \CrFullAudit. In the no-planted-effect condition, mean Scan gain approaches zero
+as context grows, although the nominal acceptance criterion still admits some spurious rules: from
+2{,}000 rows onward, \NuHarmLo--\NuHarmHi{} of 10 seeds are made slightly worse, with a
+nonsignificant mean change of $\NuFullScan$ at full context. In these foundation-model settings,
+Platt$\to$scan has a positive mean at every context (\NuPSMin{} to \NuPSMax), consistent with
+it first removing broad miscalibration before searching for localized residual structure. We therefore view
+the two-stage variant as useful when global and local calibration errors coexist, rather than as a
+universally superior form of Structured Scan.
+%=====================================================================
+\section{Exact CPU Acceleration of Structured Scan Repair}\label{sec:systems}
+%=====================================================================
+Profiling the reference implementation on the planted benchmark shows that approximately
+\CostScorerShare\% of fit time is spent in the exact scorer~\eqref{eq:gain}, which is invoked
+roughly 65{,}000 times for a standard 2{,}400-row, 30-feature discovery set. We therefore optimize
+this bottleneck without changing the scanner's statistical decisions. First, a Numba
+implementation~\cite{lam2015numba} fuses each Newton solve into one compiled loop while preserving
+its iteration, clipping and stopping rules. Second, shortlisted thresholds for a
+(feature, parent-rule) pair are scored in one compiled batch using lookup tables rather than
+repeated set-membership operations. Third, independent candidates are evaluated in parallel while
+retaining each candidate's original summation order.
+
+These changes leave candidate scores, selected rules and fitted shifts unchanged in all
+\SpConfigs{} synthetic configurations and on Credit Default. At the default problem size they
+reduce one repair fit from \SpOrigDefault\,s to \SpBatDefault\,s, a \SpBatX$\times$ speed-up, and
+give \SpBatMin--\SpBatMax$\times$ acceleration across the tested discovery sizes on a 2-core CPU
+(Fig.~\ref{fig:cost}). Across the TabPFN context ladder, median fitting time is \ScanSecMed\,s on
+one CPU core. Faster search also matters statistically: permutation-calibrated acceptance, a
+principled way to control spurious selection after a large search, requires hundreds of repeated
+scans.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.94\columnwidth]{fig_cost.pdf}
+\caption{Exact CPU acceleration of one Structured Scan fit as discovery size grows (30 features,
+2-core CPU). The compiled scorer and the batched+parallel implementation preserve the reference
+arithmetic and select identical rules; the latter gives 3.9--6.2$\times$ speed-up across the tested
+sizes.}
+\label{fig:cost}
+\end{figure}
+
+\textbf{Towards an accelerator kernel.} The acceleration above is exact. As a separate exploratory
+direction, Eq.~\eqref{eq:gain} can be approximated for candidate screening by summarizing subgroup
+logits into $B=64$ quantile bins, reducing each Newton solve to 64 aggregated values. On
+\FidHistN{} random conjunctions this approximation selects the same best candidate and top 50 as
+exact scoring, with maximum gain error \FidHistErr\,nats. With feature-wise prefix sums, threshold
+screening becomes a dense (feature$\times$threshold$\times$bin) tensor operation suited to GPUs or
+other accelerators; shortlisted candidates would still be re-scored exactly before selection.
+%=====================================================================
+\section{Discussion, Limitations and Outlook}
+%=====================================================================
+\textbf{What the results say.} In the controlled planted benchmark, strong predictors from two very
+different tabular-learning paradigms all leave a comparable localized residual after base-model
+construction. Global recalibration changes that defect only modestly, whereas Structured Scan can
+remove most of it once sufficient discovery evidence is available. The 2{,}400$\to$9{,}600
+experiment shows that failure to detect a known structured residual can be a sample-power problem
+rather than a backbone-specific limitation. Credit shows the complementary regime: when a strong
+in-distribution model leaves little validated localized residual, Scan mostly abstains, while global
+recalibration or a higher-capacity residual learner may be more useful.
+
+The correction methods therefore occupy distinct operating regimes rather than forming a single
+ranking. Global calibration is appropriate when residual error is broad; a flexible boosted
+residual learner can maximize predictive gain when additional correction complexity is acceptable;
+Structured Scan is designed for sparse, interpretable localized errors that can be independently
+validated and rejected when evidence is weak. For an in-context model this creates a second
+trade-off: such a residual can be repaired once, or the base model can be strengthened by carrying
+more context on every prediction.
+
+\textbf{Limitations.} The empirical study uses one synthetic generator and one real dataset, and
+the context--compute analysis is demonstrated only for TabPFN-2.5; broader validation across real
+tabular tasks and other in-context models is needed. Structured subgroup discovery is data-hungry:
+with 2{,}400 observations, a five-way conjunction among 30 features is frequently missed even when
+the true residual remains substantial. The current acceptance rule also uses a nominal $p<0.05$
+test after a large discovery search and can admit spurious rules when little structured signal
+remains; permutation-calibrated acceptance is the natural next step.
+
+The repair-versus-context comparison is a deployment-resource comparison, not an equal-label
+comparison. If all available held-out labels are added directly to TabPFN's context and inference
+compute is unconstrained, the larger-context model is more accurate. On Credit, the boosted residual
+corrector also achieves greater raw log-loss improvement than Structured Scan. The value of Scan is
+therefore its particular design point: a small number of named, validated subgroup corrections,
+negligible incremental inference cost and explicit abstention. CPU timing uses the TabPFN-2.5
+architecture with randomly initialized weights solely to measure architecture-level computation;
+all predictive results use released model weights, and GPU timing uses those released weights on a
+T4.
+
+\textbf{Next steps.} The results motivate five extensions: (a) permutation-calibrated acceptance to
+control search-induced false positives; (b) parallel per-feature screening and an accelerator-oriented
+candidate-scoring kernel; (c) context-level repair, where examples from a detected subgroup are
+added selectively to a foundation model's context rather than correcting its logits; (d) repair
+under temporal shift (e.g. Bank Marketing~\cite{moro2014bank}) compared directly with refreshing
+context using recent observations; and (e) structured correction inside model training, for example
+a boosting procedure that can choose between a conventional tree update and an interpretable
+subgroup shift. The last direction gives up the model-agnostic post-hoc property of the present
+method and is therefore a distinct research problem.
+
+\section*{Reproducibility}
+Base-model logits are saved once for every dataset, seed and context, and all corrections, tables
+and figures are regenerated from those frozen predictions on CPU. Canonical foundation-model runs
+use a free-tier T4 GPU. Repeating TabICLv2 on an A100 changes frozen test log-loss by at most
+$7\times10^{-5}$ per run; no accept/abstain decision changes, and only one of 30 fitted repairs
+differs in rule count because a candidate lies at the acceptance threshold. The Credit Default
+analysis uses the original UCI data and reproduces the earlier tree-model baseline (test LL
+\CreditXGBbase{} versus 0.4341). Code released with the paper records the package versions, fixed
+splits and random seeds used to regenerate all reported results.
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+\end{document}

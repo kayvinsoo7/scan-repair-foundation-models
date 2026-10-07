@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+# LaTeX build files (the generated tab_*.tex, numbers*.tex and fig_*.pdf ARE tracked)
+paper/latex/*.aux
+paper/latex/*.bbl
+paper/latex/*.blg
+paper/latex/*.log
+paper/latex/*.out
+paper/latex/*.fls
+paper/latex/*.fdb_latexmk
+paper/latex/*.synctex.gz
+paper/latex/main.pdf
+# local outputs
+reproduced/
+*.ckpt
+paper/latex/*.png

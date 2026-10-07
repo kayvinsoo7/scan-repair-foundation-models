@@ -1,0 +1,23 @@
+\begin{table}[t]
+\centering
+\caption{Discovery-power experiment on a separate $n=19{,}200$ draw. Within each model and seed, the frozen predictor, selection set and test set are fixed; Scan receives 2{,}400 or 9{,}600 discovery rows. Gain: mean test log-loss improvement ($\times10^{-3}$); Oracle share: fraction of the best one-rule gain; Jacc.: overlap with the planted subgroup. Null gain (harmful seeds) is from the matched no-planted-effect control.}
+\label{tab:disc}
+\footnotesize\setlength{\tabcolsep}{2.4pt}
+\begin{tabular}{lcrrrcr}
+\toprule
+Base model & Discovery & \begin{tabular}[b]{@{}c@{}}With\\rule\end{tabular} & Gain & \begin{tabular}[b]{@{}c@{}}Oracle\\share\end{tabular} & Jacc. & \begin{tabular}[b]{@{}c@{}}Null gain\\(harmful seeds)\end{tabular} \\
+\midrule
+\multirow{2}{*}{XGBoost} & 2.4k & 3/10 & $-$0.0 & 0\% & 0.10 & $-$0.1 (4) \\
+ & 9.6k & 10/10 & +4.2* & 78\% & 0.77 & +0.0 (0) \\
+\addlinespace[2pt]
+\multirow{2}{*}{CatBoost} & 2.4k & 4/10 & +0.7 & 15\% & 0.10 & $-$0.5 (3) \\
+ & 9.6k & 9/10 & +3.2* & 68\% & 0.68 & +0.0 (2) \\
+\addlinespace[2pt]
+\multirow{2}{*}{TabPFN-2.5} & 2.4k & 8/10 & +2.0 & 28\% & 0.20 & +0.2 (2) \\
+ & 9.6k & 10/10 & +5.7* & 84\% & 0.70 & +0.5 (2) \\
+\addlinespace[2pt]
+\multirow{2}{*}{TabICLv2} & 2.4k & 5/10 & +0.6 & 9\% & 0.11 & $-$0.0 (3) \\
+ & 9.6k & 10/10 & +5.3* & 76\% & 0.68 & $-$0.1 (2) \\
+\bottomrule
+\end{tabular}
+\end{table}

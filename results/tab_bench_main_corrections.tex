@@ -1,0 +1,26 @@
+\begin{table}[t]
+\centering
+\caption{Every base model at its best: test log-loss (LL) and improvement from each correction ($\times10^{-3}$, mean of 10 seeds; * paired $t$-test $p<0.05$; bold: best). Trees are tuned by 5-fold cross-validation; the foundation models see the whole training split as context. P$\to$S: Platt, then scan.}
+\label{tab:bench5}
+\footnotesize\setlength{\tabcolsep}{3.2pt}
+\begin{tabular}{llrrrrrr}
+\toprule
+Data & Base model & LL & Platt & Beta & Iso. & Scan & P$\to$S \\
+\midrule
+\multirow{4}{*}{Planted} & XGBoost & 0.2780 & $-$0.0 & +0.2 & $-$8.0* & +0.0 & \textbf{+0.9} \\
+ & CatBoost & 0.2750 & +0.9 & +0.9 & $-$1.9 & +0.7 & \textbf{+1.5} \\
+ & TabPFN-2.5 & 0.2742 & +1.6* & +1.5* & $-$2.0 & +2.7 & \textbf{+3.2*} \\
+ & TabICLv2 & 0.2751 & +1.4* & +1.4* & $-$3.4 & +0.9 & \textbf{+2.0*} \\
+\midrule
+\multirow{4}{*}{\begin{tabular}[c]{@{}l@{}}No planted\\effect\end{tabular}} & XGBoost & 0.2840 & $-$0.1 & $-$0.2 & $-$5.5* & $-$0.5 & $-$0.3 \\
+ & CatBoost & 0.2845 & $-$0.3 & $-$0.4 & $-$4.3 & $-$0.5 & $-$0.5 \\
+ & TabPFN-2.5 & 0.2825 & \textbf{+1.3*} & +1.2* & $-$3.5 & $-$0.8 & +0.8 \\
+ & TabICLv2 & 0.2820 & \textbf{+1.1} & +1.0* & $-$3.6 & +0.1 & +1.0 \\
+\midrule
+\multirow{4}{*}{Credit} & XGBoost & 0.4319 & $-$0.1* & $-$0.0 & $-$1.8* & \textbf{+0.1} & $-$0.0 \\
+ & CatBoost & 0.4332 & +0.2* & +0.2 & $-$1.8* & +0.1 & \textbf{+0.3} \\
+ & TabPFN-2.5 & 0.4297 & +1.3* & \textbf{+1.5*} & $-$1.2 & +0.3 & +1.2* \\
+ & TabICLv2 & 0.4298 & +1.4* & +1.3* & $-$1.8 & +0.3 & \textbf{+1.4*} \\
+\bottomrule
+\end{tabular}
+\end{table}
