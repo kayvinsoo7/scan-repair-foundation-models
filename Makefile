@@ -2,6 +2,7 @@
 PY        ?= python3
 ART       ?= $(abspath ../scan-repair-foundation-models-artifacts)
 export SSR_ARTIFACTS := $(ART)
+export SOURCE_DATE_EPOCH := 0          # deterministic figure files (no creation timestamp)
 EXP       := experiments
 BUILD     := paper/build
 LATEX     := paper/latex
@@ -32,7 +33,7 @@ paper: paper-inputs
 	  && echo "-> $(LATEX)/main.pdf"
 
 check: paper-inputs
-	git diff --stat --exit-code -- '$(LATEX)/*.tex' 'results/*.tex' 'results/*.csv' && echo "Level A: every generated table and number is identical to the committed version."
+	git diff --stat --exit-code -- '$(LATEX)/*.tex' '$(LATEX)/fig_*.pdf' 'results/' && echo "Level A: every generated table and number is identical to the committed version."
 
 # ---------------- Level B ----------------
 smoke:
