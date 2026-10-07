@@ -1,0 +1,11 @@
+# Core (CPU): everything needed to rebuild the paper from the artifacts and to re-run every correction.
+# Versions are the ones the released results were produced and checked with (Python 3.13).
+numpy==2.5.3
+pandas==3.0.5
+scipy==1.18.1
+scikit-learn==1.9.1
+xgboost==3.4.1
+catboost==1.2.10
+numba==0.68.0
+matplotlib==3.11.2
+xlrd==2.0.2

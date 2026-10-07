@@ -1,0 +1,5 @@
+# Foundation-model base models (GPU recommended). Only needed to regenerate their logits (Level C) or the timings (Level D).
+-r requirements.txt
+torch
+tabpfn==9.1.0        # TabPFN-2.5: accept the model licence on Hugging Face first (see README)
+tabicl==2.2.0        # TabICLv2, checkpoint tabicl-classifier-v2-20260212.ckpt (downloaded automatically)

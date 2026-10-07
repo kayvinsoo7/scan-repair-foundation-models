@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the paper and the archived artifacts."
+title: "Scan Repair for Foundation Models: Fast Subgroup Repair for Tree Ensembles and Tabular Foundation Models"
+type: software
+authors:
+  - family-names: "<FAMILY NAME>"
+    given-names: "<GIVEN NAMES>"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+repository-code: "https://github.com/<GITHUB-USER>/scan-repair-foundation-models"
+license: MIT
+keywords:
+  - post-hoc model repair
+  - subgroup calibration
+  - subset scanning
+  - tabular foundation models
+  - TabPFN
+  - TabICL
+  - XGBoost
+  - CatBoost
+  - in-context learning
+  - inference cost
+preferred-citation:
+  type: conference-paper
+  title: "Fix What the Model Leaves Behind: Fast Subgroup Repair for Tree Ensembles and Tabular Foundation Models"
+  authors:
+    - family-names: "<FAMILY NAME>"
+      given-names: "<GIVEN NAMES>"
+  conference:
+    name: "AccML 2027: Workshop on Accelerated Machine Learning, co-located with HiPEAC 2027"
+  year: 2027
