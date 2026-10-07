@@ -14,7 +14,7 @@ help:
 	@echo "         make paper          ... and compile paper/latex/main.pdf                  (needs pdflatex + bibtex)"
 	@echo "         make check          rebuild and verify every generated .tex/.csv is unchanged"
 	@echo "Level B  make smoke          re-run all corrections for one saved logits file and compare (about 1 min)"
-	@echo "         make corrections    re-run every correction from the saved logits         (several CPU hours)"
+	@echo "         make corrections    re-run every correction from the saved logits         (5-6 CPU hours)"
 	@echo "         make reports        ladder report tables from the corrections"
 	@echo "Level C  make trees          re-train XGBoost/CatBoost and save their logits       (CPU hours)"
 	@echo "         foundation models:  notebooks/foundation_model_logits_colab.ipynb         (GPU)"

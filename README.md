@@ -69,8 +69,8 @@ this repository, or point `SSR_ARTIFACTS` at it. There are four levels, from che
 
 | Level | Reproduces | Command | Needs | Time | Exact? |
 |---|---|---|---|---|---|
-| **A** | Every table, figure and in-text number from the released results; then the PDF | `make paper-inputs`, `make paper`, `make check` | CPU (+ LaTeX for the PDF) | minutes | Yes: `make check` verifies every generated `.tex`/`.csv` is unchanged |
-| **B** | Every correction (Platt … scan … boosted corrector) re-fitted from the saved logits | `make smoke` (1 file, ~1 min), `make corrections` (all) | CPU | ~3 CPU-hours | Yes: compared row by row with the released results (identical to machine precision) |
+| **A** | Every table, figure and in-text number from the released results; then the PDF | `make paper-inputs`, `make paper`, `make check` | CPU (+ LaTeX for the PDF) | minutes | Yes: `make check` verifies every generated table, number and figure is unchanged |
+| **B** | Every correction (Platt … scan … boosted corrector) re-fitted from the saved logits | `make smoke` (1 file, ~1 min), `make corrections` (all 520 logits files) | CPU | ~5–6 CPU-hours (split with `SHARD=0/2`, `SHARD=1/2`) | Yes: compared row by row with the released results (identical to machine precision) |
 | **C** | The base models themselves | `make trees` (XGBoost, CatBoost); `notebooks/foundation_model_logits_colab.ipynb` (TabPFN-2.5, TabICLv2) | CPU hours; a GPU for the foundation models | hours | Close, not bit-identical: GPU kernels differ by device (an A100 rerun of TabICLv2 moved test log-loss by ≤ 7×10⁻⁵ per run) |
 | **D** | Timings and the speed-up | `make systems`, `make timing-cpu`; GPU timing in the notebook | the matching hardware | ~1 h (systems), hours (CPU timing) | Same pattern; absolute seconds depend on the machine |
 
