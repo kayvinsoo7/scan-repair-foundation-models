@@ -195,14 +195,16 @@ $T=4$; beam width 24; depth $\leq5$; $\alpha=0.05$; $\ell_2$ penalty $\lambda=10
 \section{Experimental Setup}\label{sec:setup}
 %=====================================================================
 \textbf{Data and splits.} The controlled synthetic benchmark has $n=12{,}000$ observations and
-$p=30$ independent features $X_j\sim\mathrm{Uniform}(0,1)$. A background signal uses the next six
-features after the planted-rule variables, with coefficients
-$\beta=(1,-0.8,0.7,-0.6,0.5,-0.4)$ applied to centered covariates $2X-1$; the intercept is solved so
-that marginal event prevalence is 10\%. The planted subgroup is
-$S^*=\{X_1>c,\ldots,X_5>c\}$ with $c=1-0.08^{1/5}\approx0.397$, giving 8\% expected support.
-Outcomes follow a Bernoulli logistic model whose logit adds $\log(8)\mathbf{1}[S^*]$ in the planted
-condition. The no-planted-effect control uses the same generator with subgroup odds ratio 1: the
-six-feature background signal remains, but the additional conjunction effect is absent. Both use
+$p=30$ independent features $X_j\sim\mathrm{Uniform}(0,1)$. The planted subgroup is
+$S^*=\{X_1>c,\ldots,X_5>c\}$ with $c=1-0.08^{1/5}\approx0.397$ (8\% expected support), and a background
+signal uses the next six features, $X_{\mathrm{bg}}=(X_6,\ldots,X_{11})$. Outcomes are Bernoulli with
+\begin{equation*}
+\Pr(Y{=}1\mid X)=\sigma\big(b_0+(2X_{\mathrm{bg}}-1)^\top\beta+\log(\theta)\,\mathbf{1}[X\in S^*]\big),
+\end{equation*}
+with $\beta=(1,-0.8,0.7,-0.6,0.5,-0.4)$, $\theta=8$ in the planted condition and $\theta=1$ in the
+no-planted-effect control (the background signal remains; only the conjunction effect is absent). For each
+generated dataset, $b_0$ is solved after including the subgroup term so that the mean event probability
+over the sample is 10\%. Both conditions use
 6{,}000 observations for base-model construction and 2{,}400/1{,}800/1{,}800 for
  discovery/selection/test. \emph{Credit Default}~\cite{yeh2009credit} contains 30{,}000 clients and
 23 predictors (3 categorical); 15{,}000 observations construct the base model and

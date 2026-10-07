@@ -117,8 +117,9 @@ scan-repair-foundation-models/
   Split: 15,000 rows for the base model, then 6,000 / 4,500 / 4,500 for discovery / selection / test. The test rows
   are the same in every seed.
 - **Synthetic data:** `mdss_treescan_stage1.generate_structured_residual_data`. 30 Uniform(0,1) features and a
-  six-feature logistic background signal, with 10% events. The planted 5-way conjunction x0..x4 > 1 − 0.08^{1/5}
-  covers 8% of rows and multiplies their odds by 8; the "no planted effect" control uses odds ratio 1.
+  six-feature logistic background signal (x5..x10). The planted 5-way conjunction x0..x4 > 1 − 0.08^{1/5} covers
+  8% of rows and multiplies their odds by θ = 8; the "no planted effect" control uses θ = 1. The intercept is solved
+  for each generated dataset, after the subgroup term is included, so that the mean event probability is 10%.
 - **TabPFN-2.5** (`tabpfn==9.1.0`): the weights are gated. Accept the licence at
   https://huggingface.co/Prior-Labs/tabpfn_2_5 and set `HF_TOKEN` (and `TABPFN_TOKEN`). They are not redistributed
   here. The CPU timings use the same architecture with random weights (`make_timing_checkpoint.py`): identical
