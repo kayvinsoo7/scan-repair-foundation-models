@@ -1,30 +1,34 @@
 \begin{table}[t]
 \centering
-\caption{Recurring context cost and equivalent-context accuracy. Top: seconds to score 1{,}000 rows at representative TabPFN-2.5 contexts. Bottom: for a correction fitted at 1{,}000 context rows, the frozen context needed to match its test loss and the corresponding recurring cost multiplier. Scan fitting is one-time (median 7.0\,s on one CPU core at a 1{,}000-row context).}
+\caption{Recurring context cost and equivalent-context accuracy for the two foundation models. Top: seconds to score 1{,}000 rows at representative contexts (2-core CPU; T4 GPU). Bottom: for a correction fitted at a 1{,}000-row context, the frozen context the same model needs to match its test loss (Eq.) and the corresponding recurring cost multiplier. Scan fitting is one-time (median 7.0\,s on one CPU core at a 1{,}000-row context).}
 \label{tab:cost}
-\footnotesize\setlength{\tabcolsep}{4pt}
-\begin{tabular}{lrrrrr}
+\footnotesize\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{llrrrrr}
 \toprule
-Context & 500 & 1k & 2k & 4k & 15k \\
+ & Context & 500 & 1k & 2k & 4k & 15k \\
 \midrule
-CPU (s) & 21 & 33 & 56 & 139 & 1{,}017 \\
-T4 GPU (s) & 1.0 & 1.4 & 2.3 & 5.1 & 38.9 \\
+TabPFN-2.5 & CPU (s) & 21 & 33 & 56 & 139 & 1{,}017 \\
+ & T4 (s) & 1.0 & 1.4 & 2.3 & 5.1 & 38.9 \\
+TabICLv2 & CPU (s) & 14 & 21 & 39 & 81 & 488 \\
+ & T4 (s) & 1.5 & 1.8 & 1.6 & 2.4 & 8.7 \\
 \bottomrule
 \end{tabular}
 \\[4pt]
-\begin{tabular}{llrrr}
+\begin{tabular}{llrrrrrr}
 \toprule
-Data & Fix at 1k & Equiv.\ context & CPU & T4 \\
+ & & \multicolumn{3}{c}{TabPFN-2.5} & \multicolumn{3}{c}{TabICLv2} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+Data & Fix at 1k & Eq. & CPU & T4 & Eq. & CPU & T4 \\
 \midrule
-Planted & Platt & 1,238 & 1.2$\times$ & 1.2$\times$ \\
- & Scan & 4,175 & 4.4$\times$ & 3.8$\times$ \\
- & Platt$\to$scan & 2,973 & 2.7$\times$ & 2.4$\times$ \\
- & Boosted corrector & 3,411 & 3.3$\times$ & 2.9$\times$ \\
+Planted & Platt & 1,238 & 1.2$\times$ & 1.2$\times$ & 1,611 & 1.5$\times$ & 1.0$\times$ \\
+ & Scan & 4,175 & 4.4$\times$ & 3.8$\times$ & 3,067 & 2.9$\times$ & 1.1$\times$ \\
+ & Platt$\to$scan & 2,973 & 2.7$\times$ & 2.4$\times$ & 4,060 & 3.9$\times$ & 1.3$\times$ \\
+ & Boosted & 3,411 & 3.3$\times$ & 2.9$\times$ & 3,426 & 3.2$\times$ & 1.1$\times$ \\
 \midrule
-Credit & Platt & 1,292 & 1.2$\times$ & 1.2$\times$ \\
- & Scan & 2,152 & 1.8$\times$ & 1.7$\times$ \\
- & Platt$\to$scan & 2,225 & 1.9$\times$ & 1.8$\times$ \\
- & Boosted corrector & 4,140 & 4.4$\times$ & 3.7$\times$ \\
+Credit & Platt & 1,292 & 1.2$\times$ & 1.2$\times$ & 1,244 & 1.2$\times$ & 1.0$\times$ \\
+ & Scan & 2,152 & 1.8$\times$ & 1.7$\times$ & 1,371 & 1.3$\times$ & 1.0$\times$ \\
+ & Platt$\to$scan & 2,225 & 1.9$\times$ & 1.8$\times$ & 1,738 & 1.6$\times$ & 1.0$\times$ \\
+ & Boosted & 4,140 & 4.4$\times$ & 3.7$\times$ & 3,860 & 3.7$\times$ & 1.3$\times$ \\
 \bottomrule
 \end{tabular}
 \end{table}

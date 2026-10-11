@@ -12,6 +12,9 @@ LADDER = ART / "corrections" / "tabpfn25_ladder"          # posthoc.csv, rows/, 
 TIMING_CPU = ART / "timing" / "timing_cpu_2core.csv"
 TIMING_GPU = ART / "timing" / "timing_gpu_t4.csv"
 SYSTEMS = ART / "systems"
+ICL_LADDER = ART / "corrections" / "tabicl_ladder"       # TabICLv2 context ladder (second foundation model)
+TIMING_ICL_CPU = ART / "timing" / "timing_tabicl_cpu_2core.csv"
+TIMING_ICL_GPU = ART / "timing" / "timing_tabicl_gpu_t4.csv"
 for d in (LATEX, RESULTS): d.mkdir(parents=True, exist_ok=True)
 if not ART.exists():
     raise SystemExit(f"Artifacts not found at {ART}. Clone the artifacts repository next to this one, or set SSR_ARTIFACTS.")

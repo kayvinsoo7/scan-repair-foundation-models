@@ -427,6 +427,18 @@ problem (\PlEqXgb{} versus \PlEqScan{}). These results define an operating regim
 universal dominance claim: structured repair is attractive when additional context improves
 accuracy but recurring context cost is the binding resource.
 
+\textbf{A second foundation model.} TabICLv2 on the same ladder (same nested contexts, splits and
+corrections) gives the same accuracy picture. At 1{,}000 rows the scan matches the uncorrected model at
+\IclPlEqScan{} rows on the planted subgroup and \IclCrEqScan{} on Credit (Platt$\to$scan:
+\IclPlEqPS{} and \IclCrEqPS), and the rows it flags again receive \IclConcLo--\IclConcHi$\times$ their
+share of the full-context improvement, moved in its direction in \IclSignLo--\IclSignHi\% of cases.
+The cost picture differs. On the CPU, TabICLv2's cost per prediction grows almost linearly with context
+(\IclCpuSecOne\,s per 1{,}000 rows at 1{,}000 rows, \IclCpuSecFour\,s at 4{,}000), so matching the
+repair with more context costs \IclCrEqScanCpu--\IclPlEqPSCpu$\times$ more. On the T4 it barely grows
+(\IclGpuSecOne\,s to \IclGpuSecFour\,s), and the saving shrinks to at most \IclPlEqPSGpu$\times$.
+Whether repair is cheaper than context therefore depends on how the model's inference cost scales with
+context on the hardware that serves it.
+
 \subsection{Abstention as the model strengthens}
 As confirmed localized residual structure disappears, a selective repair should intervene less. On
 Credit, the fraction of seeds with an accepted Scan rule falls from \CrFiveInterv{} at 500 rows to
@@ -499,8 +511,8 @@ trade-off: such a residual can be repaired once, or the base model can be streng
 more context on every prediction.
 
 \textbf{Limitations.} The empirical study uses one synthetic generator and one real dataset, and
-the context--compute analysis is demonstrated only for TabPFN-2.5; broader validation across real
-tabular tasks and other in-context models is needed. Structured subgroup discovery is data-hungry:
+the context--compute analysis covers two in-context models (TabPFN-2.5 and TabICLv2); broader
+validation across real tabular tasks and other in-context models is needed. Structured subgroup discovery is data-hungry:
 with 2{,}400 observations, a five-way conjunction among 30 features is frequently missed even when
 the true residual remains substantial. The current acceptance rule also uses a nominal $p<0.05$
 test after a large discovery search and can admit spurious rules when little structured signal

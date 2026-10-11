@@ -148,23 +148,63 @@ for k in [500, 1000, 2000, 4000, "full"]:
 L += ["\\bottomrule", "\\end{tabular}", "\\end{table}"]
 open(os.path.join(PAPER, "tab_ladder_diag.tex"), "w").write("\n".join(L) + "\n")
 
-# ---------------- Table: cost ----------------
-L = ["\\begin{table}[t]", "\\centering", "\\caption{Recurring context cost and equivalent-context accuracy. Top: seconds to score 1{,}000 rows at "
-     "representative TabPFN-2.5 contexts. Bottom: for a correction fitted at 1{,}000 context rows, the frozen context needed "
-     "to match its test loss and the corresponding recurring cost multiplier. Scan fitting is one-time "
+# ---------------- Table: cost (TabPFN-2.5 and TabICLv2) ----------------
+from paths import ICL_LADDER, TIMING_ICL_CPU, TIMING_ICL_GPU
+PI = pd.read_csv(ICL_LADDER / "posthoc.csv")
+TTI = {"cpu": pd.read_csv(TIMING_ICL_CPU), "gpu": pd.read_csv(TIMING_ICL_GPU)}
+def per1000_icl(dev, k):
+    t = TTI[dev].sort_values("context_rows")
+    return float(np.exp(np.interp(np.log(k), np.log(t.context_rows), np.log(t.total_seconds_per_1000))))
+def eq_context(Pdf, ds, m, k=1000):
+    """Context at which the frozen model's mean test log-loss reaches the corrected one (log-linear interpolation;
+    the same rule as ladder_report.py's T9)."""
+    d = Pdf[Pdf.dataset == ds]; fr = d[d.method == "frozen"].groupby("context_rows").test_ll.mean().sort_index()
+    ks, lls = fr.index.to_numpy(float), fr.to_numpy(); target = d[(d.method == m) & (d.context_rows == k)].test_ll.mean()
+    for i in range(len(ks) - 1):
+        if ks[i] < k: continue
+        if lls[i] <= target: return ks[i]
+        if lls[i + 1] <= target:
+            w = (lls[i] - target) / (lls[i] - lls[i + 1]); return float(np.exp(np.log(ks[i]) + w * (np.log(ks[i + 1]) - np.log(ks[i]))))
+    return np.inf
+FIXES = [("Platt", "Platt"), ("scan", "Scan"), ("Platt->scan", "Platt$\\to$scan"), ("boosted residual (XGB)", "Boosted")]
+for ds, nm in [("credit", "Cr"), ("synth8", "Pl")]:
+    for m, mn in [("scan", "Scan"), ("Platt", "Platt"), ("Platt->scan", "PS"), ("boosted residual (XGB)", "Xgb")]:
+        e = eq_context(PI, ds, m); mac(f"Icl{nm}Eq{mn}", comma(e))
+        mac(f"Icl{nm}Eq{mn}Cpu", f1(per1000_icl("cpu", e) / per1000_icl("cpu", 1000))); mac(f"Icl{nm}Eq{mn}Gpu", f1(per1000_icl("gpu", e) / per1000_icl("gpu", 1000)))
+        g = 1e3 * (PI[(PI.dataset == ds) & (PI.context_rows == 1000) & (PI.method == "frozen")].set_index("seed").test_ll
+                   - PI[(PI.dataset == ds) & (PI.context_rows == 1000) & (PI.method == m)].set_index("seed").test_ll)
+        mac(f"Icl{nm}One{mn}", f1(g.mean()))
+# attribution for TabICLv2 at 500-1,000 rows (planted + Credit): concentration and direction agreement of the scan
+T8I = pd.read_csv(ICL_LADDER / "report" / "T8_attribution.csv")
+_t = T8I[(T8I.method == "scan") & T8I.dataset.isin(["synth8", "credit"]) & T8I.context.astype(str).isin(["500", "1000"])]
+mac("IclConcLo", f1(_t.concentration.min())); mac("IclConcHi", f1(_t.concentration.max()))
+mac("IclSignLo", f"{100 * _t.sign_agreement.min():.0f}"); mac("IclSignHi", f"{100 * _t.sign_agreement.max():.0f}")
+for dev, dn in [("cpu", "Cpu"), ("gpu", "Gpu")]:
+    for k, kn in [(1000, "One"), (4000, "Four"), (15000, "Full")]:
+        mac(f"Icl{dn}Sec{kn}", comma(per1000_icl(dev, k)) if dev == "cpu" else f"{per1000_icl(dev, k):.1f}")
+    mac(f"Icl{dn}FullOverOne", f"{per1000_icl(dev, 15000) / per1000_icl(dev, 1000):.0f}" if dev == "cpu" else f1(per1000_icl(dev, 15000) / per1000_icl(dev, 1000)))
+with open(os.path.join(PAPER, "numbers_ladder.tex"), "w") as fh:
+    for k, v in sorted(M.items()): fh.write(f"\\newcommand{{\\{k}}}{{{v}}}\n")
+sec = lambda f, dev, k: f"{f(dev, k):,.0f}".replace(",", "{,}") if dev == "cpu" else f"{f(dev, k):.1f}"
+L = ["\\begin{table}[t]", "\\centering", "\\caption{Recurring context cost and equivalent-context accuracy for the two foundation "
+     "models. Top: seconds to score 1{,}000 rows at representative contexts (2-core CPU; T4 GPU). Bottom: for a correction "
+     "fitted at a 1{,}000-row context, the frozen context the same model needs to match its test loss (Eq.) and the "
+     "corresponding recurring cost multiplier. Scan fitting is one-time "
      f"(median {M['ScanSecOneMed']}\\,s on one CPU core at a 1{{,}}000-row context).}}", "\\label{tab:cost}",
-     "\\footnotesize\\setlength{\\tabcolsep}{4pt}", "\\begin{tabular}{lrrrrr}", "\\toprule",
-     "Context & 500 & 1k & 2k & 4k & 15k \\\\", "\\midrule",
-     "CPU (s) & " + " & ".join(f"{per1000('cpu', k):,.0f}".replace(",", "{,}") for k in (500, 1000, 2000, 4000, 15000)) + " \\\\",
-     "T4 GPU (s) & " + " & ".join(f"{per1000('gpu', k):.1f}" for k in (500, 1000, 2000, 4000, 15000)) + " \\\\",
-     "\\bottomrule"]
-L += ["\\end{tabular}", "\\\\[4pt]", "\\begin{tabular}{llrrr}", "\\toprule",
-      "Data & Fix at 1k & Equiv.\\ context & CPU & T4 \\\\", "\\midrule"]
+     "\\footnotesize\\setlength{\\tabcolsep}{3.5pt}", "\\begin{tabular}{llrrrrr}", "\\toprule",
+     " & Context & 500 & 1k & 2k & 4k & 15k \\\\", "\\midrule"]
+for mname, f in [("TabPFN-2.5", per1000), ("TabICLv2", per1000_icl)]:
+    for j, (dev, dn) in enumerate([("cpu", "CPU (s)"), ("gpu", "T4 (s)")]):
+        L.append((mname if j == 0 else "") + f" & {dn} & " + " & ".join(sec(f, dev, k) for k in (500, 1000, 2000, 4000, 15000)) + " \\\\")
+L += ["\\bottomrule", "\\end{tabular}", "\\\\[4pt]", "\\begin{tabular}{llrrrrrr}", "\\toprule",
+      " & & \\multicolumn{3}{c}{TabPFN-2.5} & \\multicolumn{3}{c}{TabICLv2} \\\\", "\\cmidrule(lr){3-5}\\cmidrule(lr){6-8}",
+      "Data & Fix at 1k & Eq. & CPU & T4 & Eq. & CPU & T4 \\\\", "\\midrule"]
 for ds, dn in [("synth8", "Planted"), ("credit", "Credit")]:
-    for i, (m, mn) in enumerate([("Platt", "Platt"), ("scan", "Scan"), ("Platt->scan", "Platt$\\to$scan"), ("boosted residual (XGB)", "Boosted corrector")]):
-        r = T9[(T9.dataset == ds) & (T9.method == m) & (T9.context_rows == 1000)].iloc[0]; eq = r.equivalent_context_rows
-        L.append((dn if i == 0 else "") + f" & {mn} & {eq:,.0f} & {per1000('cpu', eq)/per1000('cpu', 1000):.1f}$\\times$ & "
-                 f"{per1000('gpu', eq)/per1000('gpu', 1000):.1f}$\\times$ \\\\")
+    for i, (m, mn) in enumerate(FIXES):
+        e1 = T9[(T9.dataset == ds) & (T9.method == m) & (T9.context_rows == 1000)].iloc[0].equivalent_context_rows; e2 = eq_context(PI, ds, m)
+        L.append((dn if i == 0 else "") + f" & {mn} & {e1:,.0f} & {per1000('cpu', e1)/per1000('cpu', 1000):.1f}$\\times$ & "
+                 f"{per1000('gpu', e1)/per1000('gpu', 1000):.1f}$\\times$ & {e2:,.0f} & {per1000_icl('cpu', e2)/per1000_icl('cpu', 1000):.1f}$\\times$ & "
+                 f"{per1000_icl('gpu', e2)/per1000_icl('gpu', 1000):.1f}$\\times$ \\\\")
     if ds == "synth8": L.append("\\midrule")
 L += ["\\bottomrule", "\\end{tabular}", "\\end{table}"]
 open(os.path.join(PAPER, "tab_ladder_cost.tex"), "w").write("\n".join(L) + "\n")

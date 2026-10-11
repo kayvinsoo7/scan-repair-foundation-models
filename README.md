@@ -39,7 +39,9 @@ sits on top of a tuned XGBoost model as easily as on TabPFN-2.5.
   planted, its mean effect stays within ±0.5×10⁻³.
 - **Repair is worth context.** TabPFN-2.5 with a 1,000-row context plus the repair matches the uncorrected model at
   2,152 rows (Credit Default) and 4,175 rows (planted subgroup). That makes every prediction 1.8–4.4× cheaper on a CPU
-  than buying the same accuracy with more context. The repair also flags the rows that the larger context later fixes.
+  than buying the same accuracy with more context. The repair also flags the rows that the larger context later fixes. The same accuracy trade holds for TabICLv2 (3,067 and 1,371 rows),
+  but its GPU cost barely grows with context, so there the saving is small: whether repair is cheaper than context
+  depends on how the model's cost scales on the serving hardware.
 - **Exact acceleration.** Compiled, batched and parallel scoring speeds a fit up 3.9–6.2× on a 2-core CPU, with
   bit-identical repairs.
 - **Honest limits.** On Credit Default a boosted residual corrector (tens to hundreds of opaque leaves) gains more
@@ -85,6 +87,7 @@ this repository, or point `SSR_ARTIFACTS` at it. There are four levels, from che
 | Full correction-by-context table | `make_paper_ladder_inputs.py` → `results/context_ladder_all_corrections.csv` | same | same |
 | Fig. 3 (attribution) | `make_ladder_figs.py` | `corrections/tabpfn25_ladder/report/T8_*` | `ladder_report.py` (from `rows/`) |
 | Fig. 4, Table IV, equivalent contexts, resource-accounting paragraph | `make_ladder_figs.py`, `make_paper_ladder_inputs.py` | `report/T9_*`, `timing/timing_cpu_2core.csv`, `timing/timing_gpu_t4.csv` | `ladder_report.py`, `timing_tabpfn.py` (+ `make_timing_checkpoint.py` for the CPU) |
+| Table IV (TabICLv2 columns), "A second foundation model" paragraph | `make_paper_ladder_inputs.py` | `corrections/tabicl_ladder/` (incl. `report/T8_*`), `timing/timing_tabicl_*.csv` | `base_tabicl.py` (`LADDER=...`, `notebooks/tabicl_ladder_colab.ipynb`), `corrections.py`, `ladder_report.py`, `timing_tabicl.py` (+ `make_timing_checkpoint_tabicl.py` for the CPU) |
 | Fig. 5, Sec. VI (22.8 s → 4.5 s, 3.9–6.2×, identical repairs) | `make_fig_cost.py`, `make_numbers_systems.py` | `systems/cost4_*.csv` | `systems_speedup.py` |
 | "76% of fit time", "~65,000 scorer calls" | `make_numbers_systems.py` | `systems/cost_breakdown.csv`, `systems/scorer_calls.json` | `systems_profile.py`, `systems_scorer_calls.py` |
 | B = 64 logit-histogram check | `make_numbers_systems.py` | `systems/fidelity.json` | `systems_fidelity.py` |

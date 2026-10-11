@@ -4,7 +4,7 @@ real Credit Default features, nested contexts, fit + predict, median of REPEATS)
   DEVICE=cpu TABICL_MODEL_PATH=<random-weight ckpt> python timing_tabicl.py
       CPU timing with a random-weight checkpoint of the same architecture (make_timing_checkpoint_tabicl.py):
       identical computation, meaningless predictions.
-Env: LADDER, REPEATS (2), MAX_SECONDS (1800), OUT (default <artifacts>/timing). Writes timing_tabicl_<device>.csv."""
+Env: LADDER, REPEATS (2), MAX_SECONDS (1800), TABICL_BATCH (the CPU timing used 1 to fit in 7 GB of memory), OUT (default <artifacts>/timing). Writes timing_tabicl_<device>.csv."""
 import os, time, re, platform, numpy as np, pandas as pd
 from common import *
 from ladder_data import load_dataset
@@ -16,6 +16,7 @@ DEVICE = os.environ.get("DEVICE", "cuda" if torch.cuda.is_available() else "cpu"
 dev = ("cuda:" + torch.cuda.get_device_name(0)) if DEVICE.startswith("cuda") else f"cpu ({torch.get_num_threads()} threads)"
 KW = dict(device=DEVICE, checkpoint_version="tabicl-classifier-v2-20260212.ckpt")
 if os.environ.get("TABICL_MODEL_PATH"): KW.update(model_path=os.environ["TABICL_MODEL_PATH"], allow_auto_download=False)
+if os.environ.get("TABICL_BATCH"): KW.update(batch_size=int(os.environ["TABICL_BATCH"]))   # ensemble members per batch; 1 = least memory (CPU)
 D = load_dataset("credit", 42001)
 perm = np.random.default_rng(0).permutation(D.train); test = D.test[:1000]
 def frame(idx):
@@ -24,7 +25,7 @@ def frame(idx):
     return df
 w = TabICLClassifier(**KW, random_state=0); w.fit(frame(perm[:200]), D.y[perm[:200]]); w.predict_proba(frame(test[:50]))  # warm-up
 print("Timing TabICLv2 on", dev, flush=True); rows = []
-out = os.path.join(os.environ.get("OUT", str(ARTIFACTS / "timing")), "timing_tabicl_" + re.sub(r"[^A-Za-z0-9]+", "_", dev).strip("_") + ".csv")
+out = os.path.join(os.environ.get("OUT", str(ARTIFACTS / "timing")), "timing_tabicl_" + os.environ.get("TAG", "") + re.sub(r"[^A-Za-z0-9]+", "_", dev).strip("_") + ".csv")
 os.makedirs(os.path.dirname(out), exist_ok=True)
 for s in LADDER:
     k = len(perm) if s == "full" else int(s)
