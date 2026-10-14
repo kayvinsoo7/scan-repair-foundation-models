@@ -1,9 +1,9 @@
 {
   "title": "Scan Repair for Foundation Models: code for 'Fix What the Model Leaves Behind: Fast Subgroup Repair for Tree Ensembles and Tabular Foundation Models' (AccML 2027)",
   "upload_type": "software",
-  "description": "Structured Scan Repair: fast, interpretable, held-out-validated subgroup repair for frozen tabular classifiers (TabPFN-2.5, TabICLv2, XGBoost, CatBoost), with every experiment and the scripts that rebuild every table, figure and number of the AccML 2027 paper. Saved logits and results are archived separately (scan-repair-foundation-models-artifacts).",
+  "description": "Structured Scan Repair: fast, interpretable, held-out-validated subgroup repair for frozen tabular classifiers (TabPFN-2.5, TabICLv2, XGBoost, CatBoost), with every experiment and the scripts that rebuild every table, figure and number of the AccML 2027 paper. Saved logits and results are archived separately (scan-repair-foundation-models-artistry).",
   "creators": [{"name": "<FAMILY NAME>, <GIVEN NAMES>", "affiliation": "<AFFILIATION>"}],
   "license": "MIT",
   "keywords": ["tabular foundation models", "TabPFN", "TabICL", "XGBoost", "CatBoost", "post-hoc model repair", "subgroup calibration", "subset scanning", "in-context learning", "CPU acceleration"],
-  "related_identifiers": [{"identifier": "https://github.com/kayvinsoo7/scan-repair-foundation-models-artifacts", "relation": "isSupplementedBy", "scheme": "url"}]
+  "related_identifiers": [{"identifier": "https://github.com/kayvinsoo7/scan-repair-foundation-models-artistry", "relation": "isSupplementedBy", "scheme": "url"}]
 }

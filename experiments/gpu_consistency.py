@@ -2,8 +2,8 @@
 Paper, Reproducibility: "Repeating TabICLv2 on an A100 changes frozen test log-loss by at most 7e-5 per run; no
 accept/abstain decision changes, and only one of 30 fitted repairs differs in rule count"."""
 import pandas as pd
-from common import ARTIFACTS
-t4, a100 = (pd.read_csv(ARTIFACTS / "corrections" / m / "posthoc.csv") for m in ("tabicl", "tabicl_a100"))
+from common import ARTISTRY
+t4, a100 = (pd.read_csv(ARTISTRY / "corrections" / m / "posthoc.csv") for m in ("tabicl", "tabicl_a100"))
 key = ["dataset", "seed", "method"]
 m = t4.merge(a100, on=key, suffixes=("_t4", "_a100"))
 fz = m[m.method == "frozen"]; sc = m[m.method == "scan"]

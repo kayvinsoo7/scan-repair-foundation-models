@@ -8,7 +8,7 @@ if MODEL == "tabpfn": os.environ.setdefault("TABPFN_BACKEND", "modern"); os.envi
 from common import *
 from ladder_data import load_dataset, DATASET_SEEDS
 import torch
-OUT = os.environ.get("OUT", str(ARTIFACTS / "logits" / "discovery" / MODEL)); os.makedirs(OUT, exist_ok=True)
+OUT = os.environ.get("OUT", str(ARTISTRY / "logits" / "discovery" / MODEL)); os.makedirs(OUT, exist_ok=True)
 dev = ("cuda:" + torch.cuda.get_device_name(0)) if torch.cuda.is_available() else "cpu:" + platform.machine()
 info = dict(backend=MODEL, device=dev, torch=torch.__version__); print(MODEL, "on", dev, flush=True)
 def make(D, seed):

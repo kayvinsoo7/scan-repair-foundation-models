@@ -3,7 +3,7 @@ Same data, same seed, same frozen scanner; outputs checked identical."""
 import os
 import sys, time, cProfile, pstats, io, numpy as np, pandas as pd
 from common import *
-os.chdir(out_dir(ARTIFACTS / "systems"))   # all outputs (and credit_xgb_params.json) live here
+os.chdir(out_dir(ARTISTRY / "systems"))   # all outputs (and credit_xgb_params.json) live here
 import fastexact as F, profile_scan as P
 import mdss_treescan_stage1 as M
 def set_scorer(fast):

@@ -3,8 +3,8 @@
 REPO       this repository
 SRC        src/structured_scan (the Structured Scan Repair implementation) and src/accel (exact speed-ups)
 DATA       data/ (Credit Default; the synthetic data are generated in code)
-ARTIFACTS  the companion artifacts repository (saved logits, correction results, timings).
-           Default: a sibling folder ../scan-repair-foundation-models-artifacts; override with SSR_ARTIFACTS.
+ARTISTRY  the companion artistry repository (saved logits, correction results, timings).
+           Default: a sibling folder ../scan-repair-foundation-models-artistry; override with SSR_ARTISTRY.
 """
 import sys, os
 from pathlib import Path
@@ -14,7 +14,7 @@ for sub in ("src/structured_scan", "src/accel"):
     p = str(REPO / sub)
     if p not in sys.path: sys.path.insert(0, p)
 if HERE not in sys.path: sys.path.insert(0, HERE)
-ARTIFACTS = Path(os.environ.get("SSR_ARTIFACTS", REPO.parent / "scan-repair-foundation-models-artifacts")).resolve()
+ARTISTRY = Path(os.environ.get("SSR_ARTISTRY", REPO.parent / "scan-repair-foundation-models-artistry")).resolve()
 DATA = REPO / "data"
 import numpy as np
 import structured_scan_realdata_benchmarks as core

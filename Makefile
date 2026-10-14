@@ -1,7 +1,7 @@
 # Reproduce "Fix What the Model Leaves Behind" (AccML 2027).  See README.md for the four levels.
 PY        ?= python3
-ART       ?= $(abspath ../scan-repair-foundation-models-artifacts)
-export SSR_ARTIFACTS := $(ART)
+ART       ?= $(abspath ../scan-repair-foundation-models-artistry)
+export SSR_ARTISTRY := $(ART)
 export SOURCE_DATE_EPOCH := 0          # deterministic figure files (no creation timestamp)
 EXP       := experiments
 BUILD     := paper/build
@@ -20,7 +20,7 @@ help:
 	@echo "         foundation models:  notebooks/foundation_model_logits_colab.ipynb         (GPU)"
 	@echo "Level D  make systems        profile, speed-up, histogram fidelity, scorer calls   (about 1 hour, CPU)"
 	@echo "         make timing-cpu     TabPFN-2.5 cost per 1,000 rows on this CPU            (hours)"
-	@echo "Artifacts are read from ART=$(ART)"
+	@echo "Artistry are read from ART=$(ART)"
 
 # ---------------- Level A ----------------
 paper-inputs:

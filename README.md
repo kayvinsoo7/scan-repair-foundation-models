@@ -9,7 +9,7 @@ number in the paper.
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 <!-- After the first Zenodo release, add the DOI badges here, e.g.
 [![Code DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX)
-[![Artifacts DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.YYYYYYY.svg)](https://doi.org/10.5281/zenodo.YYYYYYY) -->
+[![Artistry DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.YYYYYYY.svg)](https://doi.org/10.5281/zenodo.YYYYYYY) -->
 
 ---
 
@@ -52,7 +52,7 @@ sits on top of a tuned XGBoost model as easily as on TabPFN-2.5.
 
 ```bash
 git clone https://github.com/kayvinsoo7/scan-repair-foundation-models
-git clone https://github.com/kayvinsoo7/scan-repair-foundation-models-artifacts   # saved logits and results (~120 MB)
+git clone https://github.com/kayvinsoo7/scan-repair-foundation-models-artistry   # saved logits and results (~120 MB)
 cd scan-repair-foundation-models
 pip install -r requirements.txt           # CPU only; Python 3.11+ (tested on 3.13)
 
@@ -66,19 +66,19 @@ To repair your own model you need three things for labelled rows the model was n
 
 ## Reproducing the paper
 
-The artifacts repository holds the saved base-model logits, every correction result and the timings. Clone it next to
-this repository, or point `SSR_ARTIFACTS` at it. There are four levels, from cheapest to most expensive:
+The artistry repository holds the saved base-model logits, every correction result and the timings. Clone it next to
+this repository, or point `SSR_ARTISTRY` at it. There are four levels, from cheapest to most expensive:
 
 | Level | Reproduces | Command | Needs | Time | Exact? |
 |---|---|---|---|---|---|
 | **A** | Every table, figure and in-text number from the released results; then the PDF | `make paper-inputs`, `make paper`, `make check` | CPU (+ LaTeX for the PDF) | minutes | Yes: `make check` verifies every generated table, number and figure is unchanged |
 | **B** | Every correction (Platt … scan … boosted corrector) re-fitted from the saved logits | `make smoke` (1 file, ~1 min), `make corrections` (all 520 logits files) | CPU | ~5–6 CPU-hours (split with `SHARD=0/2`, `SHARD=1/2`) | Yes: compared row by row with the released results (identical to machine precision) |
-| **C** | The base models themselves | `make trees` (XGBoost, CatBoost); `notebooks/foundation_model_logits_colab.ipynb` (TabPFN-2.5, TabICLv2) | CPU hours; a GPU for the foundation models | hours | Trees: identical logits when refitted with the released hyperparameters (`TUNED_DIR=<artifacts>/logits/<model>`; checked). Foundation models: close, not bit-identical, because GPU kernels differ by device (an A100 rerun of TabICLv2 moved test log-loss by ≤ 7×10⁻⁵ per run) |
+| **C** | The base models themselves | `make trees` (XGBoost, CatBoost); `notebooks/foundation_model_logits_colab.ipynb` (TabPFN-2.5, TabICLv2) | CPU hours; a GPU for the foundation models | hours | Trees: identical logits when refitted with the released hyperparameters (`TUNED_DIR=<artistry>/logits/<model>`; checked). Foundation models: close, not bit-identical, because GPU kernels differ by device (an A100 rerun of TabICLv2 moved test log-loss by ≤ 7×10⁻⁵ per run) |
 | **D** | Timings and the speed-up | `make systems`, `make timing-cpu`; GPU timing in the notebook | the matching hardware | ~1 h (systems), hours (CPU timing) | Same pattern; absolute seconds depend on the machine |
 
 ### Paper item → code
 
-| Paper | Built by (`paper/build/`) | From (artifacts) | Produced by (`experiments/`) |
+| Paper | Built by (`paper/build/`) | From (artistry repository) | Produced by (`experiments/`) |
 |---|---|---|---|
 | Table I (benchmark, all corrections) | `make_bench_inputs.py` | `corrections/{xgboost,catboost,tabicl}/`, `corrections/tabpfn25_ladder/` (full context) | `corrections.py` ← `base_trees.py`, `base_tabicl.py`, `base_tabpfn_ladder.py` |
 | Table II, Fig. 1 (discovery power, n = 19,200) | `make_bench_inputs.py` | `corrections/discovery/*` | `corrections.py` ← `base_trees.py` (`DATASETS="synth8x4d4 synth1x4d4"`), `base_fm_discovery.py`, `make_discovery_small.py` |
@@ -104,7 +104,7 @@ scan-repair-foundation-models/
 ├── src/structured_scan/   Structured Scan Repair (scorer, beam search, validation, repair rounds); see its README
 ├── src/accel/             exact speed-ups: compiled scorer, batched + parallel scoring; logit-histogram score
 ├── experiments/           base models, corrections, reports, timing, systems experiments (one script each)
-├── paper/build/           scripts that turn artifacts into numbers*.tex, tab_*.tex and fig_*.pdf
+├── paper/build/           scripts that turn the released results into numbers*.tex, tab_*.tex and fig_*.pdf
 ├── paper/latex/           main.tex and its generated inputs
 ├── results/               released tables not printed in the paper (e.g. the full context-ladder table)
 ├── notebooks/             Colab notebook for the GPU runs (TabPFN-2.5, TabICLv2)
@@ -133,8 +133,8 @@ scan-repair-foundation-models/
 
 ## Citing
 
-See `CITATION.cff` (GitHub shows a "Cite this repository" button). Please also cite the archived artifacts (Zenodo DOI
-in the artifacts repository).
+See `CITATION.cff` (GitHub shows a "Cite this repository" button). Please also cite the archived artistry repository (Zenodo DOI
+in the artistry repository).
 
 ## Author
 

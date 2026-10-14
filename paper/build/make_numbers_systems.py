@@ -1,5 +1,5 @@
 """Numbers for the systems section and the reproducibility note -> paper/latex/numbers.tex.
-Reads <artifacts>/systems/: cost_breakdown.csv (profile of the original implementation), cost4_scaling.csv (three
+Reads <artistry>/systems/: cost_breakdown.csv (profile of the original implementation), cost4_scaling.csv (three
 implementations x six problem sizes), fidelity.json (logit-histogram check), credit_baseline.csv (tree baseline of the
 original study), scorer_calls.json and discovery_oracle_gain.csv (in-text numbers of Secs. VI and IV.B)."""
 import json, numpy as np, pandas as pd

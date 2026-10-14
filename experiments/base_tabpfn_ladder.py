@@ -29,7 +29,7 @@ LADDER = os.environ.get("LADDER", "500 1000 1500 2000 3000 4000 6000 8000 10000 
 DATASETS = os.environ.get("DATASETS", "synth8 synth1 credit").split()
 NSEEDS = int(os.environ.get("SEEDS", "5" if os.environ.get("QUICK") == "1" else "10"))
 TAG = "v1" if TC.BACKEND == "v1" else TC.VERSION
-OUT = os.environ.get("OUT", str(ARTIFACTS / "logits" / "tabpfn25_ladder"))
+OUT = os.environ.get("OUT", str(ARTISTRY / "logits" / "tabpfn25_ladder"))
 os.makedirs(OUT, exist_ok=True)
 
 def sizes_for(pool_n):

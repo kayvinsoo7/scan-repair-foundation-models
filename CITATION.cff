@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "If you use this code, please cite the paper and the archived artifacts."
+message: "If you use this code, please cite the paper and the archived artistry repository."
 title: "Scan Repair for Foundation Models: Fast Subgroup Repair for Tree Ensembles and Tabular Foundation Models"
 type: software
 authors:

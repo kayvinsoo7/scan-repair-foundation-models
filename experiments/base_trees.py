@@ -6,14 +6,14 @@ Protocol ("each model at its best"):
   * hyperparameters: 5-fold cross-validated random search (N_CONFIGS configurations, log-loss, early stopping)
     on the first seed's training split of each dataset, then fixed for all seeds;
   * number of trees: the cross-validated best iteration (mean over folds) x 1.1, refit on the whole training split.
-Usage: python base_trees.py xgboost|catboost [out_root]      (default out_root: <artifacts>/logits)
-Discovery-size arm: DATASETS="synth8x4d4 synth1x4d4" python base_trees.py xgboost <artifacts>/logits/discovery
-  (reuses the hyperparameters tuned for synth8/synth1, read from TUNED_DIR, default <artifacts>/logits/<model>)."""
+Usage: python base_trees.py xgboost|catboost [out_root]      (default out_root: <artistry>/logits)
+Discovery-size arm: DATASETS="synth8x4d4 synth1x4d4" python base_trees.py xgboost <artistry>/logits/discovery
+  (reuses the hyperparameters tuned for synth8/synth1, read from TUNED_DIR, default <artistry>/logits/<model>)."""
 import os, sys, time, json, numpy as np, pandas as pd
 from common import *
 from ladder_data import load_dataset, DATASET_SEEDS
 
-MODEL = sys.argv[1]; OUT_ROOT = sys.argv[2] if len(sys.argv) > 2 else str(ARTIFACTS / "logits")
+MODEL = sys.argv[1]; OUT_ROOT = sys.argv[2] if len(sys.argv) > 2 else str(ARTISTRY / "logits")
 OUT = os.path.join(OUT_ROOT, MODEL); os.makedirs(OUT, exist_ok=True)
 N_CONFIGS = int(os.environ.get("N_CONFIGS", "25")); THREADS = int(os.environ.get("THREADS", "2"))
 DATASETS = os.environ.get("DATASETS", "synth8 synth1 credit").split()
@@ -75,7 +75,7 @@ info = dict(backend=MODEL, version=MODEL, device=f"cpu ({THREADS} threads)")
 for ds in DATASETS:
     seeds = DATASET_SEEDS[ds]
     # discovery-size arm: same generator and training size as the main synthetic data -> reuse its tuned settings
-    cfg_f = os.path.join(os.environ.get("TUNED_DIR", str(ARTIFACTS / "logits" / MODEL)), f"tuned_{ds[:ds.index('x4')] if 'x4' in ds else ds}.json")
+    cfg_f = os.path.join(os.environ.get("TUNED_DIR", str(ARTISTRY / "logits" / MODEL)), f"tuned_{ds[:ds.index('x4')] if 'x4' in ds else ds}.json")
     if os.path.exists(cfg_f): cfg = json.load(open(cfg_f))
     else:
         print(f"[{MODEL}] tuning on {ds} (seed {seeds[0]} training split)", flush=True)

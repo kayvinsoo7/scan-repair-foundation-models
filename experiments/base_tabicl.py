@@ -9,7 +9,7 @@ from ladder_data import load_dataset, DATASET_SEEDS
 import torch
 from tabicl import TabICLClassifier
 
-OUT = os.environ.get("OUT", str(ARTIFACTS / "logits" / "tabicl")); os.makedirs(OUT, exist_ok=True)
+OUT = os.environ.get("OUT", str(ARTISTRY / "logits" / "tabicl")); os.makedirs(OUT, exist_ok=True)
 DATASETS = os.environ.get("DATASETS", "synth8 synth1 credit").split()
 NSEEDS = int(os.environ.get("SEEDS", "10"))
 # one context ("full" = whole training split, as in Table I) or a ladder of nested contexts, e.g.

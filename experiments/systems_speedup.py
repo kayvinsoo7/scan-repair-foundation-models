@@ -3,7 +3,7 @@ compiled + batched search. Same data and seed; fitted repairs must be identical.
 import os
 import sys, time, cProfile, pstats, numpy as np, pandas as pd
 from common import *
-os.chdir(out_dir(ARTIFACTS / "systems"))   # all outputs (and credit_xgb_params.json) live here
+os.chdir(out_dir(ARTISTRY / "systems"))   # all outputs (and credit_xgb_params.json) live here
 import fastexact as F, fastscan as FS, profile_scan as P, numba
 NT = numba.get_num_threads()
 def set_mode(mode):

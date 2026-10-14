@@ -31,7 +31,7 @@ for s in LADDER:
     rows.append(dict(device=dev, version=info["version"], context=s, context_rows=k, fit_seconds=float(np.median(fit)),
                      predict_seconds_per_1000=float(np.median(pred)), total_seconds_per_1000=float(np.median(np.add(fit, pred)))))
     print(f"  context {k:6d}: fit {rows[-1]['fit_seconds']:7.2f}s  predict 1,000 rows {rows[-1]['predict_seconds_per_1000']:7.2f}s", flush=True)
-    out = os.path.join(os.environ.get("OUT", str(ARTIFACTS / "timing")), "timing_" + re.sub(r"[^A-Za-z0-9]+", "_", dev).strip("_") + ".csv")
+    out = os.path.join(os.environ.get("OUT", str(ARTISTRY / "timing")), "timing_" + re.sub(r"[^A-Za-z0-9]+", "_", dev).strip("_") + ".csv")
     pd.DataFrame(rows).to_csv(out, index=False)
     if rows[-1]["total_seconds_per_1000"] > MAX_SECONDS: print("  (stopping: next context would be too slow)"); break
 print("Saved", out)

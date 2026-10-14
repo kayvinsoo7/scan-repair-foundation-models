@@ -1,9 +1,9 @@
 """How many times one default repair fit calls the exact scorer (Eq. 2), and how long the fit takes.
 Paper: "invoked roughly 65,000 times for a standard 2,400-row, 30-feature discovery set" (we measured 64,813).
-Writes <artifacts>/systems/scorer_calls.json."""
+Writes <artistry>/systems/scorer_calls.json."""
 import os, sys, json
 from common import *
-os.chdir(out_dir(ARTIFACTS / "systems"))
+os.chdir(out_dir(ARTISTRY / "systems"))
 import profile_scan as P
 import mdss_treescan_stage1 as M
 orig = M.exact_subgroup_logit_correction; calls = [0]

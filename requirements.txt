@@ -1,4 +1,4 @@
-# Core (CPU): everything needed to rebuild the paper from the artifacts and to re-run every correction.
+# Core (CPU): everything needed to rebuild the paper from the artistry repository and to re-run every correction.
 # Versions are the ones the released results were produced and checked with (Python 3.13).
 numpy==2.5.3
 pandas==3.0.5

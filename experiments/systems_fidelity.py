@@ -2,7 +2,7 @@
 import os
 import sys, numpy as np, pandas as pd, json
 from common import *
-os.chdir(out_dir(ARTIFACTS / "systems"))   # all outputs (and credit_xgb_params.json) live here
+os.chdir(out_dir(ARTISTRY / "systems"))   # all outputs (and credit_xgb_params.json) live here
 import fastexact as F; F.install()
 import profile_scan as P
 from fastscore import LogitBins, batched_gain, all_threshold_gains

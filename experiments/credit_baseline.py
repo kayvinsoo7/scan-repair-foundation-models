@@ -1,9 +1,9 @@
 """Sanity check: reproduce the original study's Credit Default XGBoost result (base LL 0.4341). Paper, Reproducibility:
-"reproduces the earlier tree-model baseline (test LL 0.4338 versus 0.4341)". Writes <artifacts>/systems/credit_baseline.csv."""
+"reproduces the earlier tree-model baseline (test LL 0.4338 versus 0.4341)". Writes <artistry>/systems/credit_baseline.csv."""
 import os
 import json, time, numpy as np, pandas as pd
 from common import *
-os.chdir(out_dir(ARTIFACTS / "systems"))   # all outputs (and credit_xgb_params.json) live here
+os.chdir(out_dir(ARTISTRY / "systems"))   # all outputs (and credit_xgb_params.json) live here
 import fastexact as F; F.install()
 bundle = ext.load_credit_default(DATA, allow_download=False)
 split0 = ext.make_extended_split(bundle, seed=42001)

@@ -3,7 +3,7 @@
 import os, subprocess, sys, tempfile
 from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
-ART = Path(os.environ.get("SSR_ARTIFACTS", REPO.parent / "scan-repair-foundation-models-artifacts"))
+ART = Path(os.environ.get("SSR_ARTISTRY", REPO.parent / "scan-repair-foundation-models-artistry"))
 out = Path(tempfile.mkdtemp(prefix="ssr_smoke_"))
 env = dict(os.environ, PATTERN="credit_seed42001_ctx1000.npz", NUMBA_NUM_THREADS="1")
 subprocess.run([sys.executable, str(REPO / "experiments" / "corrections.py"), str(ART / "logits" / "tabpfn25_ladder"), str(out)],

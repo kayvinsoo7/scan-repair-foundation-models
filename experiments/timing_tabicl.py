@@ -4,7 +4,7 @@ real Credit Default features, nested contexts, fit + predict, median of REPEATS)
   DEVICE=cpu TABICL_MODEL_PATH=<random-weight ckpt> python timing_tabicl.py
       CPU timing with a random-weight checkpoint of the same architecture (make_timing_checkpoint_tabicl.py):
       identical computation, meaningless predictions.
-Env: LADDER, REPEATS (2), MAX_SECONDS (1800), TABICL_BATCH (the CPU timing used 1 to fit in 7 GB of memory), OUT (default <artifacts>/timing). Writes timing_tabicl_<device>.csv."""
+Env: LADDER, REPEATS (2), MAX_SECONDS (1800), TABICL_BATCH (the CPU timing used 1 to fit in 7 GB of memory), OUT (default <artistry>/timing). Writes timing_tabicl_<device>.csv."""
 import os, time, re, platform, numpy as np, pandas as pd
 from common import *
 from ladder_data import load_dataset
@@ -25,7 +25,7 @@ def frame(idx):
     return df
 w = TabICLClassifier(**KW, random_state=0); w.fit(frame(perm[:200]), D.y[perm[:200]]); w.predict_proba(frame(test[:50]))  # warm-up
 print("Timing TabICLv2 on", dev, flush=True); rows = []
-out = os.path.join(os.environ.get("OUT", str(ARTIFACTS / "timing")), "timing_tabicl_" + os.environ.get("TAG", "") + re.sub(r"[^A-Za-z0-9]+", "_", dev).strip("_") + ".csv")
+out = os.path.join(os.environ.get("OUT", str(ARTISTRY / "timing")), "timing_tabicl_" + os.environ.get("TAG", "") + re.sub(r"[^A-Za-z0-9]+", "_", dev).strip("_") + ".csv")
 os.makedirs(os.path.dirname(out), exist_ok=True)
 for s in LADDER:
     k = len(perm) if s == "full" else int(s)
