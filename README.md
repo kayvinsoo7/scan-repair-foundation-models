@@ -51,8 +51,8 @@ sits on top of a tuned XGBoost model as easily as on TabPFN-2.5.
 ## Quick start
 
 ```bash
-git clone https://github.com/<GITHUB-USER>/scan-repair-foundation-models
-git clone https://github.com/<GITHUB-USER>/scan-repair-foundation-models-artifacts   # saved logits and results (~120 MB)
+git clone https://github.com/kayvinsoo7/scan-repair-foundation-models
+git clone https://github.com/kayvinsoo7/scan-repair-foundation-models-artifacts   # saved logits and results (~120 MB)
 cd scan-repair-foundation-models
 pip install -r requirements.txt           # CPU only; Python 3.11+ (tested on 3.13)
 

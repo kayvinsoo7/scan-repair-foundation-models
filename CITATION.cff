@@ -6,7 +6,7 @@ authors:
   - family-names: "<FAMILY NAME>"
     given-names: "<GIVEN NAMES>"
     # orcid: "https://orcid.org/0000-0000-0000-0000"
-repository-code: "https://github.com/<GITHUB-USER>/scan-repair-foundation-models"
+repository-code: "https://github.com/kayvinsoo7/scan-repair-foundation-models"
 license: MIT
 keywords:
   - post-hoc model repair
