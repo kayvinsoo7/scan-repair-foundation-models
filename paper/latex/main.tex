@@ -71,15 +71,16 @@ Global recalibration (temperature scaling~\cite{guo2017calibration}, Platt~\cite
 beta~\cite{kull2017beta}, isotonic regression~\cite{zadrozny2002}, histogram
 binning~\cite{zadrozny2001}) applies one common transformation to all predictions and therefore
 cannot selectively correct one subgroup without changing predictions elsewhere. Multicalibration,
-multiaccuracy and flexible residual learners~\cite{hebert2018multicalibration,kim2019multiaccuracy,tax2026mcgrad}
-can correct richer residual structure, but they do not impose the same design goal of returning a
+multiaccuracy and flexible residual learners~\cite{hebert2018multicalibration,kim2019multiaccuracy,tax2026mcgrad},
+also applied to clinical risk models~\cite{barda2021subpopulation}, can correct richer residual structure, but they do not impose the same design goal of returning a
 small set of interpretable subgroup shifts that are independently validated and explicitly rejected
-when evidence is insufficient. Slice finders~\cite{chung2019slicefinder,sagadeeva2021sliceline}
-locate high-loss subsets without repairing them, while predictive-bias scanning~\cite{zhang2016bias},
-built on subset scanning~\cite{neill2012fast}, stops at detection. Structured Scan Repair closes
-this audit-to-action gap: it searches original features for compact subgroup rules, estimates the
-exact likelihood benefit of a log-odds correction, validates that correction independently, and
-applies it only if the evidence survives.
+when evidence is insufficient. Slice finders~\cite{chung2019slicefinder,sagadeeva2021sliceline} locate high-loss subsets.
+Predictive-bias scanning~\cite{zhang2016bias}, built on subset scanning~\cite{neill2012fast}, detects
+significantly miscalibrated subgroups and illustrates refitting a transparent model with detected
+subgroup terms; recent extensions remain audits~\cite{boxer2026intersectional}. Structured Scan Repair
+makes this audit-to-action step a procedure: it searches original features for compact subgroup rules,
+estimates the exact likelihood benefit of a log-odds correction, validates it on independent data,
+applies it to the frozen model, and abstains when the evidence is insufficient.
 
 We ask two research questions.
 \begin{itemize}
@@ -119,8 +120,9 @@ log-likelihood would improve if every member of $S$ received the same log-odds s
 The objective is concave in $\delta$, so Newton iteration gives
 $\Delta^\star(S)=\max_\delta\Delta(S,\delta)$. At the optimum,
 $\sum_{i\in S}[y_i-\sigma(F_i+\delta)]=0$, so the mean repaired probability within $S$ matches
-its observed event rate. The statistic is inherited from predictive-bias scanning~\cite{zhang2016bias};
-here it is used not only to detect a biased subgroup but to estimate its correction.
+its observed event rate. The statistic is the predictive-bias scan score~\cite{zhang2016bias} with $q=e^{\delta}$; here
+$\hat\delta$ is applied directly as an offset to the frozen model, and $\Delta^\star(S)$ is exactly
+the reduction in total log-loss on $S$.
 
 \textbf{Search.} Exhaustively enumerating multi-feature conjunctions is infeasible, so rules grow
 one literal at a time in a diversity-aware beam (width 24, maximum depth 5). For a numeric feature
