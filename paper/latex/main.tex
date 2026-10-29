@@ -74,14 +74,14 @@ well calibrated on average is systematically wrong. Global recalibration (temper
 scaling~\cite{guo2017calibration}, Platt~\cite{platt1999}, beta~\cite{kull2017beta}, isotonic
 regression~\cite{zadrozny2002}, histogram binning~\cite{zadrozny2001}) applies one transformation to
 all predictions and cannot correct one subgroup without moving the rest. Multicalibration,
-multiaccuracy and flexible residual learners~\cite{hebert2018multicalibration,kim2019multiaccuracy,tax2026mcgrad},
-also applied to clinical risk models~\cite{barda2021subpopulation}, can correct richer residual
+multiaccuracy and flexible residual learners~\cite{hebert2018multicalibration,kim2019multiaccuracy},
+deployed at web scale~\cite{tax2026mcgrad} and applied to clinical risk models~\cite{barda2021subpopulation}, can correct richer residual
 structure, but they do not aim to return a small set of interpretable subgroup shifts that are
 independently validated and explicitly rejected when evidence is insufficient. Slice
 finders~\cite{chung2019slicefinder,sagadeeva2021sliceline} locate high-loss subsets. Predictive-bias
 scanning~\cite{zhang2016bias}, built on subset scanning~\cite{neill2012fast}, detects significantly
 miscalibrated subgroups and illustrates refitting a transparent model with detected subgroup terms;
-recent extensions remain audits~\cite{boxer2026intersectional}.
+recent extensions remain deliberately audit-only~\cite{boxer2026intersectional}.
 
 Structured Scan Repair turns this audit into a procedure for frozen models. It searches the original
 features for compact subgroup rules, scores each by the exact likelihood gain of a common log-odds
@@ -254,7 +254,8 @@ fitting and validation use the common discovery and selection partitions. We eva
 scaling, Platt scaling, beta calibration, isotonic regression, 15-bin equal-mass histogram binning,
 a single residual tree (maximum depth 3, selected on the selection data), a boosted residual
 corrector (gradient-boosted trees fitted from the frozen base logit and early-stopped on selection;
-median 63--161 leaves per setting), Structured Scan Repair, and Platt$\to$scan. Table~\ref{tab:bench} reports the full cross-model battery; the complete context-ladder table is released with the source.
+median 63--161 leaves per setting), the residual-boosting update that underlies multicalibration
+methods such as MCGrad~\cite{tax2026mcgrad}, Structured Scan Repair, and Platt$\to$scan. Table~\ref{tab:bench} reports the full cross-model battery; the complete context-ladder table is released with the source.
 
 \textbf{Timing.} Inference time is measured on a 2-core CPU and a T4 GPU. CPU timing uses the
 TabPFN-2.5 architecture with randomly initialized weights to measure architecture-level compute; all
@@ -524,7 +525,11 @@ The correction methods therefore occupy distinct operating regimes rather than f
 ranking. Global calibration is appropriate when residual error is broad; a flexible boosted
 residual learner can maximize predictive gain when additional correction complexity is acceptable;
 Structured Scan is designed for sparse, interpretable localized errors that can be independently
-validated and rejected when evidence is weak.
+validated and rejected when evidence is weak. Relative to multicalibration boosting such as
+MCGrad~\cite{tax2026mcgrad}, which finds miscalibrated regions implicitly, validates its ensemble by
+early stopping and rescales every logit, Structured Scan names each corrected subgroup, tests each
+correction on held-out data, changes only rows inside accepted rules and can leave the model
+unchanged; in exchange, it offers no guarantee over a class of groups.
 
 \textbf{Limitations.} The empirical study uses one synthetic generator and one real dataset, and
 the context--compute analysis covers two in-context models (TabPFN-2.5 and TabICLv2); broader
@@ -532,11 +537,6 @@ validation across real tabular tasks and other in-context models is needed. Stru
 (Sec.~\ref{sec:general}). The current acceptance rule also uses a nominal $p<0.05$
 test after a large discovery search and can admit spurious rules when little structured signal
 remains; permutation-calibrated acceptance is the natural next step.
-
-Repair versus context is a deployment-resource comparison, not an equal-label one, and on Credit the
-boosted residual corrector achieves greater raw log-loss improvement. The value of Scan is therefore
-its particular design point: a small number of named, validated subgroup corrections,
-negligible incremental inference cost and explicit abstention.
 
 \textbf{Next steps.} The results motivate five extensions: (a) permutation-calibrated acceptance to
 control search-induced false positives; (b) parallel per-feature screening and an accelerator-oriented
