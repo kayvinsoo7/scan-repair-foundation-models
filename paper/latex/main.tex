@@ -58,10 +58,11 @@ and TabICL~\cite{qu2025tabicl,qu2026tabiclv2} predict new rows from labelled exa
 context, without updating their pretrained weights. Here, the context is the set of labelled rows
 supplied to the model at prediction time; context size is the number of such rows. These models are
 now competitive with tuned gradient-boosted
-trees~\cite{erickson2025tabarena,chen2016xgboost,prokhorenkova2018catboost}. They also change the cost
-structure of tabular prediction. A boosted ensemble is trained once and scored cheaply; an in-context
-model conditions every prediction on its context, so more context improves accuracy but raises
-recurring inference cost, latency and memory. On a 2-core CPU, TabPFN-2.5 takes \CpuSecOne\,s to score
+trees~\cite{erickson2025tabarena,chen2016xgboost,prokhorenkova2018catboost} and need no per-dataset
+training or tuning: new labelled data are used by updating the context, without retraining. That
+convenience moves cost from training to inference. A boosted ensemble is trained once and scored
+cheaply; an in-context model conditions every prediction on its context, so a larger context improves
+accuracy (Sec.~\ref{sec:ladder}) but raises recurring inference cost, latency and memory. On a 2-core CPU, TabPFN-2.5 takes \CpuSecOne\,s to score
 1{,}000 rows from a 1{,}000-row context and \CpuSecFull\,s from 15{,}000 rows. For deployments bound by
 a CPU budget, an edge device or a latency target, context size becomes a resource to be spent carefully.
 
@@ -90,13 +91,16 @@ features for compact subgroup rules, scores each by the exact likelihood gain of
 shift, validates the chosen candidate on independent data, and applies it as a shift to the frozen
 logit, or abstains when the evidence is insufficient. The base model is never refitted, and inference
 adds a few rule comparisons. Because it needs only logits, the same layer applies to tuned trees,
-which we use to check that the targeted error is not specific to in-context learning.
+and Sec.~\ref{sec:general} shows that the targeted error is not specific to in-context learning.
+Where a tuned tree is accurate enough and a training pipeline is acceptable, the tree remains the
+cheaper deployment, and the repair applies to it unchanged. The context trade-off arises once an
+in-context model is chosen, for example to avoid per-dataset training: for a deployment that can
+afford only a given context size, repair buys back part of the accuracy a larger context would give,
+at near-zero recurring cost.
 
 A boosted residual corrector fitted on the same frozen logits buys more effective context on Credit
 (\CrEqXgb{} rows) and less on the planted benchmark (\PlEqXgb), but it always intervenes and typically
-uses tens to hundreds of leaves; Structured Scan returns a few named rules or none. With unconstrained
-compute, placing the held-out labels in context remains more accurate, so we present repair as an
-operating regime for compute-bound deployment. Our contributions are:
+uses tens to hundreds of leaves; Structured Scan returns a few named rules or none. Our contributions are:
 \begin{itemize}
 \item \textbf{A context--compute trade-off for in-context tabular models} (Sec.~\ref{sec:ladder}).
 On a nested context ladder, post-hoc subgroup repair at 1{,}000 rows matches TabPFN-2.5 at
@@ -282,15 +286,13 @@ raises predictive capability and recurring inference cost together; we study it 
 the model-building split is shuffled once and context $k$ is its first $k$ rows,
 $k\in\{500,1\text{k},1.5\text{k},2\text{k},3\text{k},4\text{k},6\text{k},8\text{k},10\text{k}\}$
 and full. Logits are saved once per (dataset, seed, $k$); every correction is then fitted on CPU
-using the standard correction splits of Sec.~\ref{sec:setup}. This ladder is separate from the
-discovery-power experiment of Sec.~\ref{sec:general} (Table~\ref{tab:disc}); its numbers should not be
-chained with that experiment.
+using the standard correction splits of Sec.~\ref{sec:setup}.
 
 \subsection{Context reduces the repair opportunity}
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{fig_gain_ladder.pdf}
+\includegraphics[width=0.9\textwidth]{fig_gain_ladder.pdf}
 \caption{Held-out log-loss improvement over frozen TabPFN-2.5 at the same context (mean and paired
 95\% CI over 10 seeds; positive is better). The panels show the planted subgroup, the matched
 no-planted-effect control, and Credit Default. Global Platt recalibration gives modest gains, whereas
@@ -322,7 +324,7 @@ significant.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{fig_attribution.pdf}
+\includegraphics[width=0.88\columnwidth]{fig_attribution.pdf}
 \caption{Row-level attribution of the benefit from full TabPFN context (mean and 95\% CI over 10
 seeds). Top: full-context improvement concentrated in rows flagged by Scan, divided by their share
 of rows; $1\times$ is the random-row baseline. Bottom: fraction of corrected rows whose logit moves
@@ -357,7 +359,7 @@ compute is free.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{fig_frontier.pdf}
+\includegraphics[width=0.86\textwidth]{fig_frontier.pdf}
 \caption{Test log-loss versus recurring TabPFN-2.5 prediction cost on a 2-core CPU; labels denote
 context size. Post-hoc corrections are fitted once, so their one-time fit cost is excluded from the
 horizontal axis and their recurring cost is essentially that of the underlying context. Dotted line
@@ -377,9 +379,15 @@ respectively (\CrEqScanGpu$\times$ and \PlEqScanGpu$\times$ on the T4), whereas 
 one-time median CPU fit of \ScanSecOneMed\,s at this context. Platt buys only about
 \PlEqPlattX--\CrEqPlattX$\times$ context. The boosted residual corrector buys more effective
 context than Scan on Credit (\CrEqXgb{} rows versus \CrEqScan{}) but less on the planted structured
-problem (\PlEqXgb{} versus \PlEqScan{}). These results define an operating regime rather than a
-universal dominance claim: structured repair is attractive when additional context improves
-accuracy but recurring context cost is the binding resource.
+problem (\PlEqXgb{} versus \PlEqScan{}).
+
+On Credit, the foundation models lead the tuned trees only at full context (test LL \BPfnCrLL{}
+against \BXgbCrLL, a margin comparable to the \BPfnCrPlatt$\times10^{-3}$ that Platt scaling adds);
+at 1{,}000 rows, even after repair (\CrScanOneLL), TabPFN-2.5 trails the tuned XGBoost by about
+$8\times10^{-3}$. On the planted benchmark, where the residual is localized, the repaired 1{,}000-row
+model roughly matches it (\PlScanOneLL{} against \BXgbPlLL). Repair does not make a small-context
+foundation model beat a tuned tree in general; it narrows the gap to a larger context for a
+deployment that has already chosen the foundation model.
 
 \textbf{A second foundation model.} TabICLv2 on the same ladder (same nested contexts, splits and
 corrections) gives the same accuracy picture. At 1{,}000 rows the scan matches the uncorrected model at
@@ -446,7 +454,7 @@ discovery size is detectability rather than absence of repairable residual struc
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{fig_disc.pdf}
+\includegraphics[width=0.8\columnwidth]{fig_disc.pdf}
 \caption{Model-agnostic recovery of the planted subgroup in the separate $n=19{,}200$ discovery-power
 experiment (test-set absolute residual, mean over 10 seeds; lower is better). Grey circles are frozen
 base models; orange squares are Platt; light and dark blue diamonds are Structured Scan with 2{,}400
@@ -497,7 +505,7 @@ null scans (Sec.~\ref{sec:disc}).
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.94\columnwidth]{fig_cost.pdf}
+\includegraphics[width=0.74\columnwidth]{fig_cost.pdf}
 \caption{Exact CPU acceleration of one Structured Scan fit as discovery size grows (30 features,
 2-core CPU). The compiled scorer and the batched+parallel implementation preserve the reference
 arithmetic and select identical rules; the latter gives 3.9--6.2$\times$ speed-up across the tested
@@ -515,9 +523,8 @@ other accelerators; shortlisted candidates would still be re-scored exactly befo
 %=====================================================================
 \section{Discussion, Limitations and Outlook}\label{sec:disc}
 %=====================================================================
-\textbf{What the results say.} In the controlled planted benchmark, strong predictors from two very
-different tabular-learning paradigms all leave a comparable localized residual after base-model
-construction. Global recalibration changes that defect only modestly, whereas Structured Scan can
+\textbf{What the results say.} In the planted benchmark, strong predictors from both paradigms leave a
+comparable localized residual. Global recalibration changes that defect only modestly, whereas Structured Scan can
 remove most of it once sufficient discovery evidence is available. Credit shows the complementary regime: when a strong
 in-distribution model leaves little validated localized residual, Scan mostly abstains, while global
 recalibration or a higher-capacity residual learner may be more useful.
@@ -532,9 +539,8 @@ early stopping and rescales every logit, Structured Scan names each corrected su
 correction on held-out data, changes only rows inside accepted rules and can leave the model
 unchanged; in exchange, it offers no guarantee over a class of groups.
 
-\textbf{Limitations.} The empirical study uses one synthetic generator and one real dataset, and
-the context--compute analysis covers two in-context models (TabPFN-2.5 and TabICLv2); broader
-validation across real tabular tasks and other in-context models is needed. Structured subgroup discovery is data-hungry
+\textbf{Limitations.} The study uses one synthetic generator, one real dataset and two in-context
+models; broader validation is needed. Structured subgroup discovery is data-hungry
 (Sec.~\ref{sec:general}). The acceptance test is nominal because the selection data
 also choose among up to five candidates; a simulation for TabPFN-2.5 with 200 null scans per setting
 puts its false-acceptance rate at about 13\%, and a calibrated threshold leaves all conclusions
