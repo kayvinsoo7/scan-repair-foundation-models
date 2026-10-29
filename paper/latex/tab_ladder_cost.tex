@@ -1,6 +1,6 @@
 \begin{table}[t]
 \centering
-\caption{Recurring context cost and equivalent-context accuracy for the two foundation models. Top: seconds to score 1{,}000 rows at representative contexts (2-core CPU; T4 GPU). Bottom: for a correction fitted at a 1{,}000-row context, the frozen context the same model needs to match its test loss (Eq.) and the corresponding recurring cost multiplier. Scan fitting is one-time (median 7.0\,s on one CPU core at a 1{,}000-row context).}
+\caption{Recurring context cost and equivalent-context accuracy for the two foundation models. Top: seconds to score 1{,}000 rows at representative contexts (2-core CPU; T4 GPU). Bottom: for a correction fitted at a 1{,}000-row context, the frozen context the same model needs to match its test loss (Eq.) and the corresponding recurring cost multiplier. SSR fitting is one-time (median 7.0\,s on one CPU core at a 1{,}000-row context).}
 \label{tab:cost}
 \footnotesize\setlength{\tabcolsep}{3.5pt}
 \begin{tabular}{llrrrrr}
@@ -21,13 +21,13 @@ TabICLv2 & CPU (s) & 14 & 21 & 39 & 81 & 488 \\
 Data & Fix at 1k & Eq. & CPU & T4 & Eq. & CPU & T4 \\
 \midrule
 Planted & Platt & 1,238 & 1.2$\times$ & 1.2$\times$ & 1,611 & 1.5$\times$ & 1.0$\times$ \\
- & Scan & 4,175 & 4.4$\times$ & 3.8$\times$ & 3,067 & 2.9$\times$ & 1.1$\times$ \\
- & Platt$\to$scan & 2,973 & 2.7$\times$ & 2.4$\times$ & 4,060 & 3.9$\times$ & 1.3$\times$ \\
+ & SSR & 4,175 & 4.4$\times$ & 3.8$\times$ & 3,067 & 2.9$\times$ & 1.1$\times$ \\
+ & R-SSR & 2,973 & 2.7$\times$ & 2.4$\times$ & 4,060 & 3.9$\times$ & 1.3$\times$ \\
  & Boosted & 3,411 & 3.3$\times$ & 2.9$\times$ & 3,426 & 3.2$\times$ & 1.1$\times$ \\
 \midrule
 Credit & Platt & 1,292 & 1.2$\times$ & 1.2$\times$ & 1,244 & 1.2$\times$ & 1.0$\times$ \\
- & Scan & 2,152 & 1.8$\times$ & 1.7$\times$ & 1,371 & 1.3$\times$ & 1.0$\times$ \\
- & Platt$\to$scan & 2,225 & 1.9$\times$ & 1.8$\times$ & 1,738 & 1.6$\times$ & 1.0$\times$ \\
+ & SSR & 2,152 & 1.8$\times$ & 1.7$\times$ & 1,371 & 1.3$\times$ & 1.0$\times$ \\
+ & R-SSR & 2,225 & 1.9$\times$ & 1.8$\times$ & 1,738 & 1.6$\times$ & 1.0$\times$ \\
  & Boosted & 4,140 & 4.4$\times$ & 3.7$\times$ & 3,860 & 3.7$\times$ & 1.3$\times$ \\
 \bottomrule
 \end{tabular}

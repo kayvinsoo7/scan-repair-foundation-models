@@ -1,11 +1,11 @@
 \begin{table*}[t]
 \centering
-\caption{Frozen-backbone benchmark under the standard correction budget. LL is frozen test log-loss; other entries are mean improvement ($\times10^{-3}$, positive is better) over 10 matched seeds. * paired $p<0.05$ (descriptive, unadjusted); bold: largest mean in the row. Corrections are defined in Sec.~III; P$\to$S: Platt then Scan.}
+\caption{Frozen-backbone benchmark under the standard correction budget. LL is frozen test log-loss; other entries are mean improvement ($\times10^{-3}$, positive is better) over 10 matched seeds. * paired $p<0.05$ (descriptive, unadjusted); bold: largest mean in the row. Corrections are defined in Sec.~III; R-SSR: Platt, then SSR.}
 \label{tab:bench}
 \footnotesize\setlength{\tabcolsep}{4pt}
 \begin{tabular}{llrrrrrrrrrr}
 \toprule
-Data & Base model & LL & Temp. & Platt & Beta & Iso. & Hist. & Tree & Boost. & Scan & P$\to$S \\
+Data & Base model & LL & Temp. & Platt & Beta & Iso. & Hist. & Tree & Boost. & SSR & R-SSR \\
 \midrule
 \multirow{4}{*}{Planted} & XGBoost & 0.2780 & +0.0 & $-$0.0 & +0.2 & $-$8.0* & $-$3.0* & $-$0.5 & +0.6* & +0.0 & \textbf{+0.9} \\
  & CatBoost & 0.2750 & +0.1 & +0.9 & +0.9 & $-$1.9 & $-$1.2 & +0.1 & +0.8* & +0.7 & \textbf{+1.5} \\

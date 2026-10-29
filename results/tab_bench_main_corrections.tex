@@ -1,11 +1,11 @@
 \begin{table}[t]
 \centering
-\caption{Every base model at its best: test log-loss (LL) and improvement from each correction ($\times10^{-3}$, mean of 10 seeds; * paired $t$-test $p<0.05$; bold: best). Trees are tuned by 5-fold cross-validation; the foundation models see the whole training split as context. P$\to$S: Platt, then scan.}
+\caption{Every base model at its best: test log-loss (LL) and improvement from each correction ($\times10^{-3}$, mean of 10 seeds; * paired $t$-test $p<0.05$; bold: best). Trees are tuned by 5-fold cross-validation; the foundation models see the whole training split as context. R-SSR: Platt, then SSR.}
 \label{tab:bench5}
 \footnotesize\setlength{\tabcolsep}{3.2pt}
 \begin{tabular}{llrrrrrr}
 \toprule
-Data & Base model & LL & Platt & Beta & Iso. & Scan & P$\to$S \\
+Data & Base model & LL & Platt & Beta & Iso. & SSR & R-SSR \\
 \midrule
 \multirow{4}{*}{Planted} & XGBoost & 0.2780 & $-$0.0 & +0.2 & $-$8.0* & +0.0 & \textbf{+0.9} \\
  & CatBoost & 0.2750 & +0.9 & +0.9 & $-$1.9 & +0.7 & \textbf{+1.5} \\

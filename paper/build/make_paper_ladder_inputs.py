@@ -95,7 +95,7 @@ with open(os.path.join(PAPER, "numbers_ladder.tex"), "w") as fh:
 
 # ---------------- Table: gains ----------------
 cols = [("temperature", "Temp."), ("Platt", "Platt"), ("beta", "Beta"), ("isotonic", "Iso."), ("histogram binning", "Hist."),
-        ("residual tree", "Tree"), ("boosted residual (XGB)", "Boost."), ("scan", "Scan"), ("Platt->scan", "P$\\to$S")]
+        ("residual tree", "Tree"), ("boosted residual (XGB)", "Boost."), ("scan", "SSR"), ("Platt->scan", "R-SSR")]
 L = ["\\begin{table*}[t]", "\\centering", "\\caption{Test log-loss improvement over frozen TabPFN-2.5 at the same context "
      "($\\times10^{-3}$, mean of 10 seeds; * paired $t$-test $p<0.05$; bold: best). Every correction uses the same "
      "discovery+selection labels; abbreviations as in Table~\\ref{tab:bench}.}", "\\label{tab:gain}", "\\footnotesize\\setlength{\\tabcolsep}{4.5pt}",
@@ -130,8 +130,8 @@ for ds in ["synth8", "synth1", "credit"]:
 pd.DataFrame(rows_).to_csv(RESULTS / "context_ladder_all_corrections.csv", index=False)
 
 # ---------------- Table: diagnostics (planted + credit) ----------------
-L = ["\\begin{table}[t]", "\\centering", "\\caption{What remains repairable as TabPFN context grows. Planted: subgroup residual before$\\to$after Scan, "
-     "oracle one-rule gain ($\\times10^{-3}$), Scan's share, and Jaccard overlap with the true subgroup. Credit: seeds with "
+L = ["\\begin{table}[t]", "\\centering", "\\caption{What remains repairable as TabPFN context grows. Planted: subgroup residual before$\\to$after SSR, "
+     "oracle one-rule gain ($\\times10^{-3}$), SSR's share, and Jaccard overlap with the true subgroup. Credit: seeds with "
      "an accepted repair and accepted rules passing the audit.}", "\\label{tab:diag}", "\\footnotesize\\setlength{\\tabcolsep}{3.2pt}",
      "\\begin{tabular}{lcrrrcc}", "\\toprule",
      " & \\multicolumn{4}{c}{Planted subgroup} & \\multicolumn{2}{c}{Credit Default} \\\\",
@@ -166,7 +166,7 @@ def eq_context(Pdf, ds, m, k=1000):
         if lls[i + 1] <= target:
             w = (lls[i] - target) / (lls[i] - lls[i + 1]); return float(np.exp(np.log(ks[i]) + w * (np.log(ks[i + 1]) - np.log(ks[i]))))
     return np.inf
-FIXES = [("Platt", "Platt"), ("scan", "Scan"), ("Platt->scan", "Platt$\\to$scan"), ("boosted residual (XGB)", "Boosted")]
+FIXES = [("Platt", "Platt"), ("scan", "SSR"), ("Platt->scan", "R-SSR"), ("boosted residual (XGB)", "Boosted")]
 for ds, nm in [("credit", "Cr"), ("synth8", "Pl")]:
     for m, mn in [("scan", "Scan"), ("Platt", "Platt"), ("Platt->scan", "PS"), ("boosted residual (XGB)", "Xgb")]:
         e = eq_context(PI, ds, m); mac(f"Icl{nm}Eq{mn}", comma(e))
@@ -189,7 +189,7 @@ sec = lambda f, dev, k: f"{f(dev, k):,.0f}".replace(",", "{,}") if dev == "cpu" 
 L = ["\\begin{table}[t]", "\\centering", "\\caption{Recurring context cost and equivalent-context accuracy for the two foundation "
      "models. Top: seconds to score 1{,}000 rows at representative contexts (2-core CPU; T4 GPU). Bottom: for a correction "
      "fitted at a 1{,}000-row context, the frozen context the same model needs to match its test loss (Eq.) and the "
-     "corresponding recurring cost multiplier. Scan fitting is one-time "
+     "corresponding recurring cost multiplier. SSR fitting is one-time "
      f"(median {M['ScanSecOneMed']}\\,s on one CPU core at a 1{{,}}000-row context).}}", "\\label{tab:cost}",
      "\\footnotesize\\setlength{\\tabcolsep}{3.5pt}", "\\begin{tabular}{llrrrrr}", "\\toprule",
      " & Context & 500 & 1k & 2k & 4k & 15k \\\\", "\\midrule"]

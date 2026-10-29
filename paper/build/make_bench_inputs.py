@@ -31,11 +31,11 @@ def fmt(v, p): return f"{v:+.1f}" + ("*" if p < 0.05 else "")
 
 # ---------- Table: main corrections, four models, three datasets ----------
 DSN = [("synth8", "Planted"), ("synth1", "\\begin{tabular}[c]{@{}l@{}}No planted\\\\effect\\end{tabular}"), ("credit", "Credit")]
-MAIN = [("Platt", "Platt"), ("beta", "Beta"), ("isotonic", "Iso."), ("scan", "Scan"), ("Platt->scan", "P$\\to$S")]
+MAIN = [("Platt", "Platt"), ("beta", "Beta"), ("isotonic", "Iso."), ("scan", "SSR"), ("Platt->scan", "R-SSR")]
 L = ["\\begin{table}[t]", "\\centering",
      "\\caption{Every base model at its best: test log-loss (LL) and improvement from each correction ($\\times10^{-3}$, "
      "mean of 10 seeds; * paired $t$-test $p<0.05$; bold: best). Trees are tuned by 5-fold cross-validation; the "
-     "foundation models see the whole training split as context. P$\\to$S: Platt, then scan.}",
+     "foundation models see the whole training split as context. R-SSR: Platt, then SSR.}",
      "\\label{tab:bench5}", "\\footnotesize\\setlength{\\tabcolsep}{3.2pt}",
      "\\begin{tabular}{llr" + "r" * len(MAIN) + "}", "\\toprule",
      "Data & Base model & LL & " + " & ".join(n for _, n in MAIN) + " \\\\", "\\midrule"]
@@ -58,9 +58,10 @@ open(RESULTS / "tab_bench_main_corrections.tex", "w").write("\n".join(L) + "\n")
 # ---------- discovery arm ----------
 L = ["\\begin{table}[t]", "\\centering",
      "\\caption{Discovery-power experiment on a separate $n=19{,}200$ draw. Within each model and seed, the frozen "
-     "predictor, selection set and test set are fixed; Scan receives 2{,}400 or 9{,}600 discovery rows. Gain: mean test "
+     "predictor, selection set and test set are fixed; SSR receives 2{,}400 or 9{,}600 discovery rows. Gain: mean test "
      "log-loss improvement ($\\times10^{-3}$); Oracle share: fraction of the best one-rule gain; Jacc.: overlap with the "
-     "planted subgroup. Null gain (harmful seeds) is from the matched no-planted-effect control.}",
+     "planted subgroup. Null gain (harmful seeds) is from the matched no-planted-effect control. "
+     "Acceptance at 2.4k differs from Table~\\ref{tab:bench} because this is a separate draw.}",
      "\\label{tab:disc}", "\\footnotesize\\setlength{\\tabcolsep}{2.4pt}",
      "\\begin{tabular}{lcrrrcr}", "\\toprule",
      "Base model & Discovery & \\begin{tabular}[b]{@{}c@{}}With\\\\rule\\end{tabular} & Gain & \\begin{tabular}[b]{@{}c@{}}Oracle\\\\share\\end{tabular} & Jacc. & "
@@ -103,11 +104,11 @@ mac("BCalRedLo", f"{_red.min().min():.0f}"); mac("BCalRedHi", f"{_red.max().max(
 
 # ---------- robustness: all corrections, four models ----------
 ALL = [("temperature", "Temp."), ("Platt", "Platt"), ("beta", "Beta"), ("isotonic", "Iso."), ("histogram binning", "Hist."),
-       ("residual tree", "Tree"), ("boosted residual (XGB)", "Boost."), ("scan", "Scan"), ("Platt->scan", "P$\\to$S")]
+       ("residual tree", "Tree"), ("boosted residual (XGB)", "Boost."), ("scan", "SSR"), ("Platt->scan", "R-SSR")]
 L = ["\\begin{table*}[t]", "\\centering",
      "\\caption{Frozen-backbone benchmark under the standard correction budget. LL is frozen test log-loss; other "
      "entries are mean improvement ($\\times10^{-3}$, positive is better) over 10 matched seeds. * paired $p<0.05$ "
-     "(descriptive, unadjusted); bold: largest mean in the row. Corrections are defined in Sec.~III; P$\\to$S: Platt then Scan.}",
+     "(descriptive, unadjusted); bold: largest mean in the row. Corrections are defined in Sec.~III; R-SSR: Platt, then SSR.}",
      "\\label{tab:bench}", "\\footnotesize\\setlength{\\tabcolsep}{4pt}",
      "\\begin{tabular}{llr" + "r" * len(ALL) + "}", "\\toprule", "Data & Base model & LL & " + " & ".join(n for _, n in ALL) + " \\\\", "\\midrule"]
 for i, (ds, dn) in enumerate(DSN):
@@ -128,7 +129,7 @@ plt.rcParams.update({"font.size": 7.5, "pdf.fonttype": 42, "font.family": "DejaV
 INK, MUTED, GRID = "#0b0b0b", "#52514e", "#e4e3df"
 fig, ax = plt.subplots(figsize=(3.45, 2.05))
 items = [("bias_frozen", "Frozen base model", MUTED, "o", None), ("bias_Platt", "Platt", "#eb6834", "s", None),
-         ("bias_scan", "Scan, 2.4k discovery rows", "#b9d4f3", "D", "2.4k"), ("bias_scan", "Scan, 9.6k discovery rows", "#1f5fae", "D", "9.6k")]
+         ("bias_scan", "SSR, 2.4k discovery rows", "#b9d4f3", "D", "2.4k"), ("bias_scan", "SSR, 9.6k discovery rows", "#1f5fae", "D", "9.6k")]
 ys = np.arange(len(MODELS))[::-1]
 for (col, lab, colr, mk, size) in items:
     sub = D[D["size"] == (size or "9.6k")].set_index("key").loc[[k for k, _ in MODELS]]

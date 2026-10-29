@@ -19,8 +19,8 @@ plt.rcParams.update({"font.size": 7.5, "axes.labelsize": 7.5, "axes.titlesize": 
                      "font.family": "DejaVu Sans", "pdf.fonttype": 42})
 INK, MUTED, GRID = "#0b0b0b", "#52514e", "#e4e3df"
 STYLE = {   # colour follows the method in every figure
-    "scan":                   dict(color="#2a78d6", marker="o", lw=2.0, ms=4.5, label="Scan (ours)"),
-    "Platt->scan":            dict(color="#1baf7a", marker="D", lw=2.0, ms=4.0, label="Platt → scan (ours)"),
+    "scan":                   dict(color="#2a78d6", marker="o", lw=2.0, ms=4.5, label="SSR (ours)"),
+    "Platt->scan":            dict(color="#1baf7a", marker="D", lw=2.0, ms=4.0, label="R-SSR (ours)"),
     "Platt":                  dict(color="#eb6834", marker="s", lw=1.6, ms=4.0, label="Platt"),
     "boosted residual (XGB)": dict(color="#9a9893", marker="^", lw=1.2, ms=3.5, ls=(0, (3, 2)), label="Boosted corrector"),
     "oracle subgroup":        dict(color=INK, marker=None, lw=1.0, ls=(0, (1, 1.5)), label="True subgroup, best shift (oracle)"),
