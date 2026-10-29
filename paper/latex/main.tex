@@ -16,7 +16,7 @@
 
 \begin{document}
 
-\title{Fix What the Model Leaves Behind:\\Fast Subgroup Repair for Tree Ensembles\\and Tabular Foundation Models}
+\title{Repair Once or Pay per Prediction?\\Subgroup Repair versus More Context\\for Tabular Foundation Models}
 
 % AccML submissions are NOT anonymised: replace with real names and affiliations.
 \author{\IEEEauthorblockN{Author Name(s)}
@@ -46,8 +46,8 @@ error given sufficient data, without significant average harm when no effect is 
 \end{abstract}
 
 \begin{IEEEkeywords}
-post-hoc model repair, subset scanning, calibration, gradient boosting, tabular foundation models,
-in-context learning, inference cost, CPU inference
+tabular foundation models, in-context learning, inference cost, CPU inference, post-hoc model repair,
+subset scanning, calibration, gradient boosting
 \end{IEEEkeywords}
 
 %=====================================================================
@@ -55,7 +55,9 @@ in-context learning, inference cost, CPU inference
 %=====================================================================
 Tabular foundation models such as TabPFN~\cite{hollmann2023tabpfn,hollmann2025nature,grinsztajn2025tabpfn25}
 and TabICL~\cite{qu2025tabicl,qu2026tabiclv2} predict new rows from labelled examples supplied in
-context, without updating their pretrained weights, and are now competitive with tuned gradient-boosted
+context, without updating their pretrained weights. Here, the context is the set of labelled rows
+supplied to the model at prediction time; context size is the number of such rows. These models are
+now competitive with tuned gradient-boosted
 trees~\cite{erickson2025tabarena,chen2016xgboost,prokhorenkova2018catboost}. They also change the cost
 structure of tabular prediction. A boosted ensemble is trained once and scored cheaply; an in-context
 model conditions every prediction on its context, so more context improves accuracy but raises
@@ -81,7 +83,7 @@ independently validated and explicitly rejected when evidence is insufficient. S
 finders~\cite{chung2019slicefinder,sagadeeva2021sliceline} locate high-loss subsets. Predictive-bias
 scanning~\cite{zhang2016bias}, built on subset scanning~\cite{neill2012fast}, detects significantly
 miscalibrated subgroups and illustrates refitting a transparent model with detected subgroup terms;
-recent extensions remain deliberately audit-only~\cite{boxer2026intersectional}.
+recent extensions remain audit-only by design~\cite{boxer2026intersectional}.
 
 Structured Scan Repair turns this audit into a procedure for frozen models. It searches the original
 features for compact subgroup rules, scores each by the exact likelihood gain of a common log-odds
@@ -155,7 +157,7 @@ stratified halves $V_1,V_2$ of the selection set. Candidates are retained only w
 likelihood on both halves and the fitted shifts have the same sign. Among these, the scanner selects
 the rule maximizing the smaller per-row gain across the two halves. A nominal one-degree-of-freedom
 likelihood-ratio test for $\delta=0$ is then applied to this single rule on the complete selection
-set at $\alpha=0.05$. If it fails, the round terminates; the algorithm does not fall back to a
+set at $\alpha=0.05$, as in the replication stage of a two-stage association study~\cite{kraft2009replication}. If it fails, the round terminates; the algorithm does not fall back to a
 runner-up. On real data, accepted rules are additionally audited on the test set: subgroup residual
 must shrink, removing the rule must worsen test log-loss, and the rule must beat the 95th percentile
 of 500 score-matched placebo subgroups. This audit is diagnostic and does not alter the fitted
@@ -253,9 +255,9 @@ are reported in the original named feature space. No preprocessing step uses tes
 fitting and validation use the common discovery and selection partitions. We evaluate temperature
 scaling, Platt scaling, beta calibration, isotonic regression, 15-bin equal-mass histogram binning,
 a single residual tree (maximum depth 3, selected on the selection data), a boosted residual
-corrector (gradient-boosted trees fitted from the frozen base logit and early-stopped on selection;
-median 63--161 leaves per setting), the residual-boosting update that underlies multicalibration
-methods such as MCGrad~\cite{tax2026mcgrad}, Structured Scan Repair, and Platt$\to$scan. Table~\ref{tab:bench} reports the full cross-model battery; the complete context-ladder table is released with the source.
+corrector (the residual-boosting update underlying multicalibration methods such as
+MCGrad~\cite{tax2026mcgrad}: gradient-boosted trees fitted from the frozen base logit and
+early-stopped on selection; median 63--161 leaves per setting), Structured Scan Repair, and Platt$\to$scan. Table~\ref{tab:bench} reports the full cross-model battery; the complete context-ladder table is released with the source.
 
 \textbf{Timing.} Inference time is measured on a 2-core CPU and a T4 GPU. CPU timing uses the
 TabPFN-2.5 architecture with randomly initialized weights to measure architecture-level compute; all
@@ -490,9 +492,8 @@ These changes leave candidate scores, selected rules and fitted shifts unchanged
 reduce one repair fit from \SpOrigDefault\,s to \SpBatDefault\,s, a \SpBatX$\times$ speed-up, and
 give \SpBatMin--\SpBatMax$\times$ acceleration across the tested discovery sizes on a 2-core CPU
 (Fig.~\ref{fig:cost}). Across the TabPFN context ladder, median fitting time is \ScanSecMed\,s on
-one CPU core. Faster search also matters statistically: permutation-calibrated acceptance, a
-principled way to control spurious selection after a large search, requires hundreds of repeated
-scans.
+one CPU core. Faster search also makes calibrated acceptance affordable: it requires hundreds of repeated
+null scans (Sec.~\ref{sec:disc}).
 
 \begin{figure}[t]
 \centering
@@ -512,7 +513,7 @@ exact scoring, with maximum gain error \FidHistErr\,nats. With feature-wise pref
 screening becomes a dense (feature$\times$threshold$\times$bin) tensor operation suited to GPUs or
 other accelerators; shortlisted candidates would still be re-scored exactly before selection.
 %=====================================================================
-\section{Discussion, Limitations and Outlook}
+\section{Discussion, Limitations and Outlook}\label{sec:disc}
 %=====================================================================
 \textbf{What the results say.} In the controlled planted benchmark, strong predictors from two very
 different tabular-learning paradigms all leave a comparable localized residual after base-model
@@ -534,26 +535,23 @@ unchanged; in exchange, it offers no guarantee over a class of groups.
 \textbf{Limitations.} The empirical study uses one synthetic generator and one real dataset, and
 the context--compute analysis covers two in-context models (TabPFN-2.5 and TabICLv2); broader
 validation across real tabular tasks and other in-context models is needed. Structured subgroup discovery is data-hungry
-(Sec.~\ref{sec:general}). The current acceptance rule also uses a nominal $p<0.05$
-test after a large discovery search and can admit spurious rules when little structured signal
-remains; permutation-calibrated acceptance is the natural next step.
+(Sec.~\ref{sec:general}). The acceptance test is nominal because the selection data
+also choose among up to five candidates; a simulation for TabPFN-2.5 with 200 null scans per setting
+puts its false-acceptance rate at about 13\%, and a calibrated threshold leaves all conclusions
+unchanged.
 
-\textbf{Next steps.} The results motivate five extensions: (a) permutation-calibrated acceptance to
-control search-induced false positives; (b) parallel per-feature screening and an accelerator-oriented
-candidate-scoring kernel; (c) context-level repair, where examples from a detected subgroup are
-added selectively to a foundation model's context rather than correcting its logits; (d) repair
-under temporal shift compared directly with refreshing
-context using recent observations; and (e) structured correction inside model training, for example
-a boosting procedure that can choose between a conventional tree update and an interpretable
-subgroup shift. The last direction gives up the model-agnostic post-hoc property of the present
-method and is therefore a distinct research problem.
+\textbf{Next steps and open questions.} The results motivate four extensions: (a) an
+accelerator-oriented candidate-scoring kernel; (b) context-level repair; (c) repair under temporal
+shift, compared with refreshing the context; and (d) structured correction inside model training,
+a distinct problem because it is no longer post hoc. Two questions remain open: should repair move
+into the context itself, adding examples from a flagged subgroup instead of shifting logits, and how
+much of the scan can a binned kernel move onto accelerators before exact rescoring dominates?
 
 \section*{Reproducibility}
 Base-model logits are saved once for every dataset, seed and context, and all corrections, tables
 and figures are regenerated from those frozen predictions on CPU. Canonical foundation-model runs
 use a free-tier T4 GPU. Repeating TabICLv2 on an A100 changes frozen test log-loss by at most
-$7\times10^{-5}$ per run; no accept/abstain decision changes, and only one of 30 fitted repairs
-differs in rule count because a candidate lies at the acceptance threshold. The Credit Default
+$7\times10^{-5}$ per run and no accept/abstain decision. The Credit Default
 analysis uses the original UCI data and reproduces the earlier tree-model baseline (test LL
 \CreditXGBbase{} versus 0.4341). Released code records package versions, splits and seeds.
 \bibliographystyle{IEEEtran}
