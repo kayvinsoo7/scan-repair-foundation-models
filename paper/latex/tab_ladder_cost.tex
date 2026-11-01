@@ -1,6 +1,6 @@
 \begin{table}[t]
 \centering
-\caption{Recurring context cost and equivalent-context accuracy for the two foundation models. Top: seconds to score 1{,}000 rows at representative contexts (2-core CPU; T4 GPU). Bottom: for a correction fitted at a 1{,}000-row context, the frozen context the same model needs to match its test loss (Eq.) and the corresponding recurring cost multiplier. SSR fitting is one-time (median 7.0\,s on one CPU core at a 1{,}000-row context).}
+\caption{Recurring context cost and equivalent-context accuracy for the two foundation models. Top: seconds to score 1{,}000 rows at representative contexts (2-core CPU; T4 GPU). Bottom: for a correction fitted at a 1{,}000-row context, the context (Ctx) at which the uncorrected model matches its test loss, and the corresponding recurring cost multiplier. SSR fitting is one-time (median 7.0\,s on one CPU core at a 1{,}000-row context).}
 \label{tab:cost}
 \footnotesize\setlength{\tabcolsep}{3.5pt}
 \begin{tabular}{llrrrrr}
@@ -18,7 +18,7 @@ TabICLv2 & CPU (s) & 14 & 21 & 39 & 81 & 488 \\
 \toprule
  & & \multicolumn{3}{c}{TabPFN-2.5} & \multicolumn{3}{c}{TabICLv2} \\
 \cmidrule(lr){3-5}\cmidrule(lr){6-8}
-Data & Fix at 1k & Eq. & CPU & T4 & Eq. & CPU & T4 \\
+Data & Fix at 1k & Ctx & CPU & T4 & Ctx & CPU & T4 \\
 \midrule
 Planted & Platt & 1,238 & 1.2$\times$ & 1.2$\times$ & 1,611 & 1.5$\times$ & 1.0$\times$ \\
  & SSR & 4,175 & 4.4$\times$ & 3.8$\times$ & 3,067 & 2.9$\times$ & 1.1$\times$ \\

@@ -1,11 +1,11 @@
 \begin{table*}[t]
 \centering
-\caption{Test log-loss improvement over frozen TabPFN-2.5 at the same context ($\times10^{-3}$, mean of 10 seeds; * paired $t$-test $p<0.05$; bold: best). Every correction uses the same discovery+selection labels; abbreviations as in Table~\ref{tab:bench}.}
+\caption{Test log-loss improvement over uncorrected TabPFN-2.5 at the same context ($\times10^{-3}$, mean of 10 seeds; * paired $t$-test $p<0.05$; bold: best). Every correction uses the same discovery+selection labels; abbreviations as in Table~\ref{tab:bench}.}
 \label{tab:gain}
 \footnotesize\setlength{\tabcolsep}{4.5pt}
 \begin{tabular}{llrrrrrrrrrr}
 \toprule
-Data & Context & Frozen LL & Temp. & Platt & Beta & Iso. & Hist. & Tree & Boost. & SSR & R-SSR \\
+Data & Context & Base LL & Temp. & Platt & Beta & Iso. & Hist. & Tree & Boost. & SSR & R-SSR \\
 \midrule
 \multirow{5}{*}{Planted subgroup} & 500 & 0.2979 & +2.2 & +3.1* & +3.2* & +0.3 & +2.1 & +1.5 & \textbf{+15.2*} & +11.5* & +13.1* \\
  & 1k & 0.2892 & +0.9 & +1.5* & +1.5* & $-$2.2 & $-$0.7 & +0.5 & +9.8* & \textbf{+11.6*} & +8.6* \\

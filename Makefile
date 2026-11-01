@@ -1,4 +1,4 @@
-# Reproduce "Fix What the Model Leaves Behind" (AccML 2027).  See README.md for the four levels.
+# Reproduce "Repair Once or Pay per Prediction?" (AccML 2027).  See README.md for the four levels.
 PY        ?= python3
 ART       ?= $(abspath ../scan-repair-foundation-models-artistry)
 export SSR_ARTISTRY := $(ART)

@@ -1,6 +1,6 @@
 """Paper figures from the context ladder (TabPFN-2.5).
   python make_ladder_figs.py <posthoc folder (posthoc.csv, report/)> <out folder> <timing_cpu.csv> <timing_gpu.csv>
-fig_gain_ladder   improvement over the frozen model at the same context, per context size (paired 95% CI)
+fig_gain_ladder   improvement over the uncorrected model at the same context, per context size (paired 95% CI)
 fig_frontier      accuracy vs. prediction cost: the repair buys the accuracy of a larger context
 fig_attribution   the scan flags the rows that more context later fixes, and moves them the same way"""
 import os, sys, numpy as np, pandas as pd
@@ -24,7 +24,7 @@ STYLE = {   # colour follows the method in every figure
     "Platt":                  dict(color="#eb6834", marker="s", lw=1.6, ms=4.0, label="Platt"),
     "boosted residual (XGB)": dict(color="#9a9893", marker="^", lw=1.2, ms=3.5, ls=(0, (3, 2)), label="Boosted corrector"),
     "oracle subgroup":        dict(color=INK, marker=None, lw=1.0, ls=(0, (1, 1.5)), label="True subgroup, best shift (oracle)"),
-    "frozen":                 dict(color=MUTED, marker="o", lw=1.4, ms=3.5, ls=(0, (4, 2)), label="Frozen TabPFN (more context)"),
+    "frozen":                 dict(color=MUTED, marker="o", lw=1.4, ms=3.5, ls=(0, (4, 2)), label="Uncorrected TabPFN (more context)"),
 }
 DS = {"synth8": "Synthetic, planted subgroup", "credit": "Credit Default", "synth1": "Synthetic, no planted subgroup effect"}
 ROWS = {"synth8": 6000, "synth1": 6000, "credit": 15000}
@@ -46,7 +46,7 @@ def paired(ds, m):
         out.append((k, x.mean(), h))
     return np.array(out)
 
-# ---------------- Figure 1: gain over frozen at the same context ----------------
+# ---------------- Figure 1: gain over the uncorrected model at the same context ----------------
 fig, axs = plt.subplots(1, 3, figsize=(7.16, 2.35))
 for ax, ds in zip(axs, ["synth8", "synth1", "credit"]):
     ks = sorted(P[P.dataset == ds].context_rows.unique()); full = max(ks)
@@ -66,7 +66,7 @@ for ax, ds in zip(axs, ["synth8", "synth1", "credit"]):
     ax.axhline(0, color=MUTED, lw=0.8)
     ctx_axis(ax, ks, full); clean(ax); ax.set_title(DS[ds], color=INK, pad=4)
     ax.set_xlabel("TabPFN context (labelled rows)", color=INK)
-axs[0].set_ylabel("Log-loss improvement over\nfrozen TabPFN (×10$^{-3}$)", color=INK)
+axs[0].set_ylabel("Log-loss improvement over\nuncorrected TabPFN (×10$^{-3}$)", color=INK)
 h, l = axs[0].get_legend_handles_labels()
 fig.legend(h, l, loc="upper center", ncol=5, frameon=False, bbox_to_anchor=(0.5, 1.03), handlelength=2.2, columnspacing=1.2)
 fig.tight_layout(rect=(0, 0, 1, 0.9), w_pad=1.2)
@@ -90,7 +90,7 @@ for ax, ds in zip(axs, ["credit", "synth8"]):
                 if k in (500, 1000, 2000, 4000, full):
                     ax.annotate((f"{k/1000:g}k" if k >= 1000 else str(k)) + (" (full)" if k == full else ""), (xx, yy),
                                 textcoords="offset points", xytext=(4, 3), fontsize=6.3, color=MUTED)
-    # the headline: scan at 1,000 rows reaches the accuracy of frozen TabPFN at the equivalent (larger) context
+    # the headline: scan at 1,000 rows reaches the accuracy of uncorrected TabPFN at the equivalent (larger) context
     r = T9[(T9.dataset == ds) & (T9.method == "scan") & (T9.context_rows == 1000)].iloc[0]
     x0, x1 = per1000("cpu", 1000), per1000("cpu", r.equivalent_context_rows)
     ax.plot([x0, x1], [r.fix_ll, r.fix_ll], color=INK, lw=0.8, ls=(0, (1.5, 1.5)), zorder=1)

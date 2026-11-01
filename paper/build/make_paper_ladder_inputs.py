@@ -96,11 +96,11 @@ with open(os.path.join(PAPER, "numbers_ladder.tex"), "w") as fh:
 # ---------------- Table: gains ----------------
 cols = [("temperature", "Temp."), ("Platt", "Platt"), ("beta", "Beta"), ("isotonic", "Iso."), ("histogram binning", "Hist."),
         ("residual tree", "Tree"), ("boosted residual (XGB)", "Boost."), ("scan", "SSR"), ("Platt->scan", "R-SSR")]
-L = ["\\begin{table*}[t]", "\\centering", "\\caption{Test log-loss improvement over frozen TabPFN-2.5 at the same context "
+L = ["\\begin{table*}[t]", "\\centering", "\\caption{Test log-loss improvement over uncorrected TabPFN-2.5 at the same context "
      "($\\times10^{-3}$, mean of 10 seeds; * paired $t$-test $p<0.05$; bold: best). Every correction uses the same "
      "discovery+selection labels; abbreviations as in Table~\\ref{tab:bench}.}", "\\label{tab:gain}", "\\footnotesize\\setlength{\\tabcolsep}{4.5pt}",
      "\\begin{tabular}{llr" + "r" * len(cols) + "}", "\\toprule",
-     "Data & Context & Frozen LL & " + " & ".join(c[1] for c in cols) + " \\\\", "\\midrule"]
+     "Data & Context & Base LL & " + " & ".join(c[1] for c in cols) + " \\\\", "\\midrule"]
 DSN = {"synth8": "Planted subgroup", "credit": "Credit Default", "synth1": "No planted effect"}
 for ds in ["synth8", "synth1", "credit"]:
     ks = [500, 1000, 2000, 4000, FULL[ds]]
@@ -156,7 +156,7 @@ def per1000_icl(dev, k):
     t = TTI[dev].sort_values("context_rows")
     return float(np.exp(np.interp(np.log(k), np.log(t.context_rows), np.log(t.total_seconds_per_1000))))
 def eq_context(Pdf, ds, m, k=1000):
-    """Context at which the frozen model's mean test log-loss reaches the corrected one (log-linear interpolation;
+    """Context at which the uncorrected model's mean test log-loss reaches the corrected one (log-linear interpolation;
     the same rule as ladder_report.py's T9)."""
     d = Pdf[Pdf.dataset == ds]; fr = d[d.method == "frozen"].groupby("context_rows").test_ll.mean().sort_index()
     ks, lls = fr.index.to_numpy(float), fr.to_numpy(); target = d[(d.method == m) & (d.context_rows == k)].test_ll.mean()
@@ -188,7 +188,7 @@ with open(os.path.join(PAPER, "numbers_ladder.tex"), "w") as fh:
 sec = lambda f, dev, k: f"{f(dev, k):,.0f}".replace(",", "{,}") if dev == "cpu" else f"{f(dev, k):.1f}"
 L = ["\\begin{table}[t]", "\\centering", "\\caption{Recurring context cost and equivalent-context accuracy for the two foundation "
      "models. Top: seconds to score 1{,}000 rows at representative contexts (2-core CPU; T4 GPU). Bottom: for a correction "
-     "fitted at a 1{,}000-row context, the frozen context the same model needs to match its test loss (Eq.) and the "
+     "fitted at a 1{,}000-row context, the context (Ctx) at which the uncorrected model matches its test loss, and the "
      "corresponding recurring cost multiplier. SSR fitting is one-time "
      f"(median {M['ScanSecOneMed']}\\,s on one CPU core at a 1{{,}}000-row context).}}", "\\label{tab:cost}",
      "\\footnotesize\\setlength{\\tabcolsep}{3.5pt}", "\\begin{tabular}{llrrrrr}", "\\toprule",
@@ -198,7 +198,7 @@ for mname, f in [("TabPFN-2.5", per1000), ("TabICLv2", per1000_icl)]:
         L.append((mname if j == 0 else "") + f" & {dn} & " + " & ".join(sec(f, dev, k) for k in (500, 1000, 2000, 4000, 15000)) + " \\\\")
 L += ["\\bottomrule", "\\end{tabular}", "\\\\[4pt]", "\\begin{tabular}{llrrrrrr}", "\\toprule",
       " & & \\multicolumn{3}{c}{TabPFN-2.5} & \\multicolumn{3}{c}{TabICLv2} \\\\", "\\cmidrule(lr){3-5}\\cmidrule(lr){6-8}",
-      "Data & Fix at 1k & Eq. & CPU & T4 & Eq. & CPU & T4 \\\\", "\\midrule"]
+      "Data & Fix at 1k & Ctx & CPU & T4 & Ctx & CPU & T4 \\\\", "\\midrule"]
 for ds, dn in [("synth8", "Planted"), ("credit", "Credit")]:
     for i, (m, mn) in enumerate(FIXES):
         e1 = T9[(T9.dataset == ds) & (T9.method == m) & (T9.context_rows == 1000)].iloc[0].equivalent_context_rows; e2 = eq_context(PI, ds, m)

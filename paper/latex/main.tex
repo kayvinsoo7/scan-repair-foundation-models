@@ -26,7 +26,7 @@ email@institution}}
 \maketitle
 
 \begin{abstract}
-Tabular foundation models such as TabPFN and TabICL predict from labelled rows supplied in context,
+Tabular foundation models such as TabPFN and TabICL predict from labeled rows supplied in context,
 so accuracy can be bought with more context, but that cost is paid again on every prediction: on a
 2-core CPU, TabPFN-2.5 takes \CpuSecOne\,s to score 1{,}000 rows from a 1{,}000-row context and
 \CpuSecFull\,s from 15{,}000. We ask when a one-time post-hoc correction can substitute for this
@@ -40,9 +40,9 @@ observations that additional context later improves. The saving depends on how i
 on the serving hardware: for TabICLv2 on a T4 GPU, where cost barely grows with context, it falls to
 \IclCrEqScanGpu--\IclPlEqScanGpu$\times$; and with unconstrained compute, placing the held-out labels
 in context remains more accurate. Compiled, batched scoring fits a repair in seconds on one CPU core,
-\SpBatMin--\SpBatMax$\times$ faster with bit-identical results. The same layer works across tuned
+\SpBatMin--\SpBatMax$\times$ faster with bit-identical results. SSR works across tuned
 XGBoost, CatBoost, TabPFN-2.5 and TabICLv2, removing \DBiasRedLo--\DBiasRedHi\% of a planted subgroup
-error given sufficient data, without significant average harm when no effect is planted.
+error with 9{,}600 discovery rows, without significant average harm when no effect is planted.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -54,12 +54,12 @@ subset scanning, calibration, gradient boosting
 \section{Introduction}
 %=====================================================================
 Tabular foundation models such as TabPFN~\cite{hollmann2023tabpfn,hollmann2025nature,grinsztajn2025tabpfn25}
-and TabICL~\cite{qu2025tabicl,qu2026tabiclv2} predict new rows from labelled examples supplied in
-context, without updating their pretrained weights. Here, the context is the set of labelled rows
+and TabICL~\cite{qu2025tabicl,qu2026tabiclv2} predict new rows from labeled examples supplied in
+context, without updating their pretrained weights. Here, the context is the set of labeled rows
 supplied to the model at prediction time; context size is the number of such rows. These models are
 now competitive with tuned gradient-boosted
 trees~\cite{erickson2025tabarena,chen2016xgboost,prokhorenkova2018catboost} and need no per-dataset
-training or tuning: new labelled data are used by updating the context, without retraining. That
+training or tuning: new labeled data are used by updating the context, without retraining. That
 convenience moves cost from training to inference. A boosted ensemble is trained once and scored
 cheaply; an in-context model conditions every prediction on its context, so a larger context improves
 accuracy (Sec.~\ref{sec:ladder}) but raises recurring inference cost, latency and memory. On a 2-core CPU, TabPFN-2.5 takes \CpuSecOne\,s to score
@@ -68,7 +68,7 @@ a CPU budget, an edge device or a latency target, context size becomes a resourc
 
 This paper asks a deployment question: when a small-context model is wrong in a localized, repairable
 way, can a one-time correction recover the accuracy that more context would buy, at a fraction of the
-recurring cost? The correction needs labelled rows the model has not seen, rows that could instead be
+recurring cost? The correction needs labeled rows the model has not seen, rows that could instead be
 added to the context. We therefore compare repair and context as uses of a compute budget, not of a
 label budget.
 
@@ -86,11 +86,11 @@ scanning~\cite{zhang2016bias}, built on subset scanning~\cite{neill2012fast}, de
 miscalibrated subgroups and illustrates refitting a transparent model with detected subgroup terms;
 recent extensions remain audit-only by design~\cite{boxer2026intersectional}.
 
-Structured Scan Repair (SSR) turns this audit into a procedure for frozen models. It searches the original
+Structured Scan Repair (SSR) turns this audit into a repair procedure that leaves the model unchanged. It searches the original
 features for compact subgroup rules, scores each by the exact likelihood gain of a common log-odds
-shift, validates the chosen candidate on independent data, and applies it as a shift to the frozen
-logit, or abstains when the evidence is insufficient. The base model is never refitted, and inference
-adds a few rule comparisons. Because it needs only logits, the same layer applies to tuned trees,
+shift, validates the chosen candidate on independent data, and applies it as a shift to the model's
+logit, or abstains when the evidence is insufficient. Inference
+adds a few rule comparisons. Because it needs only logits, SSR applies equally to tuned trees,
 and Sec.~\ref{sec:general} shows that the targeted error is not specific to in-context learning.
 Where a tuned tree is accurate enough and a training pipeline is acceptable, the tree remains the
 cheaper deployment, and the repair applies to it unchanged. The context trade-off arises once an
@@ -98,8 +98,8 @@ in-context model is chosen, for example to avoid per-dataset training: for a dep
 afford only a given context size, repair buys back part of the accuracy a larger context would give,
 at near-zero recurring cost.
 
-A boosted residual corrector fitted on the same frozen logits buys more effective context on Credit
-(\CrEqXgb{} rows) and less on the planted benchmark (\PlEqXgb), but it always intervenes and typically
+A boosted residual corrector fitted on the same logits matches a larger context on Credit
+(\CrEqXgb{} rows) and a smaller one on the planted benchmark (\PlEqXgb), but it always intervenes and typically
 uses tens to hundreds of leaves; SSR returns a few named rules or none. Our contributions are:
 \begin{itemize}
 \item \textbf{A context--compute trade-off for in-context tabular models} (Sec.~\ref{sec:ladder}).
@@ -107,7 +107,7 @@ On a nested context ladder, post-hoc subgroup repair at 1{,}000 rows matches Tab
 \CrEqScan--\PlEqScan{} rows, reducing recurring CPU inference cost by
 \CrEqScanCpu--\PlEqScanCpu$\times$. The saving is hardware-dependent and largely disappears where
 inference cost is flat in context (\IclCrEqScanGpu--\IclPlEqScanGpu$\times$ for TabICLv2 on a T4).
-\item \textbf{Evidence that repair and context fix the same errors} (Sec.~\ref{sec:attr}). Rows
+\item \textbf{Evidence that repair and context fix many of the same errors} (Sec.~\ref{sec:attr}). Rows
 flagged by the repair receive \PlConcLo--\PlConcHi$\times$ their share of the improvement later
 delivered by full context on the planted benchmark (\CrConcLo--\CrConcHi$\times$ on Credit) and, at
 small contexts, are moved in its direction in \CrSignLo--\CrSignHi\% of cases, against
@@ -115,20 +115,20 @@ small contexts, are moved in its direction in \CrSignLo--\CrSignHi\% of cases, a
 \item \textbf{Exact CPU acceleration of the repair} (Sec.~\ref{sec:systems}). Compiled, batched and
 parallel scoring speeds a fit \SpBatMin--\SpBatMax$\times$ with bit-identical rules and shifts, so a
 repair fits in seconds on one CPU core.
-\item \textbf{A validated, model-agnostic repair layer} (Secs.~\ref{sec:method},~\ref{sec:general}).
+\item \textbf{A validated, model-agnostic repair} (Secs.~\ref{sec:method},~\ref{sec:general}).
 Built on the predictive-bias scan score, it validates each correction on independent data, applies it
-to the frozen model, and abstains when no validated subgroup error exists. Across tuned XGBoost,
+to the base model, and abstains when no validated subgroup error exists. Across tuned XGBoost,
 CatBoost, TabPFN-2.5 and TabICLv2, a planted subgroup error survives model construction and global
-recalibration; given sufficient discovery data, the repair removes \DBiasRedLo--\DBiasRedHi\% of it in
+recalibration; with 9{,}600 discovery rows, the repair removes \DBiasRedLo--\DBiasRedHi\% of it in
 every model without significant average harm when nothing is planted.
 \end{itemize}
 
 %=====================================================================
 \section{Structured Scan Repair}\label{sec:method}
 %=====================================================================
-\textbf{Setting.} A frozen probabilistic classifier outputs a logit $F(x)$ and probability
-$p(x)=\sigma(F(x))$. Once repair begins, the base model is never updated: only additive subgroup
-shifts are learned. Labelled observations not used to construct the base predictor are partitioned
+\textbf{Setting.} A fitted probabilistic classifier, the base model, outputs a logit $F(x)$ and probability
+$p(x)=\sigma(F(x))$. Once repair begins, the base model, including the context of an in-context model,
+is never updated: only additive subgroup shifts are learned. Labeled observations not used to construct the base predictor are partitioned
 into \emph{discovery}, \emph{selection} and \emph{test} sets. A subgroup $S$ is an interpretable
 conjunction of literals on the original features (numeric thresholds or categorical subsets). After
 $T$ accepted corrections, the repaired predictor is
@@ -145,7 +145,7 @@ The objective is concave in $\delta$, so Newton iteration gives
 $\Delta^\star(S)=\max_\delta\Delta(S,\delta)$. At the optimum,
 $\sum_{i\in S}[y_i-\sigma(F_i+\delta)]=0$, so the mean repaired probability within $S$ matches
 its observed event rate. The statistic is the predictive-bias scan score~\cite{zhang2016bias} with $q=e^{\delta}$; here
-$\hat\delta$ is applied directly as an offset to the frozen model, and $\Delta^\star(S)$ is exactly
+$\hat\delta$ is applied directly as an offset to the base model's logit, and $\Delta^\star(S)$ is exactly
 the reduction in total log-loss on $S$.
 
 \textbf{Search.} Exhaustively enumerating multi-feature conjunctions is infeasible, so rules grow
@@ -158,7 +158,7 @@ Categorical levels are ordered so that only prefix subsets need be considered.
 \textbf{Validation and abstention.} Discovery proposes candidate rules; selection determines
 whether any is sufficiently stable to apply. Each candidate is independently refitted on two
 stratified halves $V_1,V_2$ of the selection set. Candidates are retained only when they improve
-likelihood on both halves and the fitted shifts have the same sign. Among these, the scanner selects
+likelihood on both halves and the fitted shifts have the same sign. Among these, SSR selects
 the rule maximizing the smaller per-row gain across the two halves. A nominal one-degree-of-freedom
 likelihood-ratio test for $\delta=0$ is then applied to this single rule on the complete selection
 set at $\alpha=0.05$, as in the replication stage of a two-stage association study~\cite{kraft2009replication}. If it fails, the round terminates; the algorithm does not fall back to a
@@ -171,29 +171,27 @@ repair.
 added, all accepted shifts are jointly refitted on selection data with $F$ as a fixed offset and an
 $\ell_2$ coefficient penalty of $10^{-3}$. The updated residuals are then scanned again. The process
 stops at the first round with no stable candidate or when the selected rule fails the whole-selection
-test. Only the subgroup terms in~\eqref{eq:repair} are learned; the parameters, structure and, for
-an in-context model, context of the base predictor remain unchanged.
+test.
 
 \textbf{Two-stage variant.} R-SSR (recalibrated SSR) fits Platt scaling on discovery data and then applies
 SSR to the recalibrated logits; the selection set remains reserved for validating
 candidate subgroup corrections. This variant removes a global calibration component before searching
-for localized residual structure.
+for subgroup error.
 
 \textbf{What a correction does.} Inside a selected subgroup, adding $\delta$ to the logit
 multiplies predicted odds by $e^{\delta}$; observations outside the subgroup are unchanged and
-ranking within the subgroup is preserved. Thus a fitted repair is a small collection of explicit
+ranking within the subgroup is preserved. A fitted repair is thus a small collection of explicit
 subgroup rules and one scalar shift per rule rather than a second high-capacity predictor.
 
-Algorithm~\ref{alg:ssr} summarizes the fitting procedure. Base-model construction ends before
-repair begins; discovery proposes rules, selection decides whether they survive and estimates their
+Algorithm~\ref{alg:ssr} summarizes the fitting procedure: discovery proposes rules, selection decides whether they survive and estimates their
 shifts, and test labels are reserved for evaluation and, on real data, the diagnostic audit.
 
 \begin{algorithm}[!t]
-\caption{Structured Scan Repair of a frozen classifier}
+\caption{Structured Scan Repair (SSR)}
 \label{alg:ssr}
 \small
 \begin{algorithmic}[1]
-\Require Frozen logit $F$; discovery $D$; selection $V=V_1\cup V_2$ (stratified halves);
+\Require Base-model logit $F$; discovery $D$; selection $V=V_1\cup V_2$ (stratified halves);
 $T=4$; beam width 24; depth $\leq5$; $\alpha=0.05$; $\ell_2$ penalty $\lambda=10^{-3}$
 \Ensure Repaired logit $F_R$ and rule set $\mathcal R$ (possibly empty)
 \State $\mathcal R\gets\emptyset$; $F_R\gets F$
@@ -239,16 +237,15 @@ seed, every base model and correction uses the same partition. Each synthetic se
 from the generator; on Credit the 4{,}500 test rows are fixed and the seeds re-partition the
 remaining rows.
 
-\textbf{Strong frozen base configurations.} XGBoost and CatBoost are tuned once per dataset by
+\textbf{Base models.} XGBoost and CatBoost are tuned once per dataset by
 5-fold cross-validated random search over 25 configurations (log-loss, early stopping) on the first
 seed's model-building partition; the selected hyperparameters are then refitted on each seed's
-model-building partition and frozen. Tuning never uses test rows. TabPFN-2.5~\cite{grinsztajn2025tabpfn25}
+model-building partition. Tuning never uses test rows. TabPFN-2.5~\cite{grinsztajn2025tabpfn25}
 (\texttt{tabpfn} 9.1.0) and TabICLv2~\cite{qu2026tabiclv2} (\texttt{tabicl} 2.2.0) use their
-released default configurations and receive the complete model-building split as labelled context.
-These protocols provide strong representative configurations rather than exhaustive optimization of
-each family. Once base prediction is complete, every model is treated identically by the correction
-layer: it receives original features, labels and that model's frozen logits on the common correction
-partitions.
+released default configurations and receive the complete model-building split as labeled context.
+Each family thus receives a standard, well-tuned configuration, though not an exhaustive search.
+Once base prediction is complete, every correction method treats all models identically: it receives
+the original features, labels and that model's logits on the common correction partitions.
 
 \textbf{Preprocessing.} Credit Default has no missing values. Its three categorical variables are
 integer-coded using the categories seen in the model-building rows. XGBoost receives these codes as
@@ -260,7 +257,7 @@ fitting and validation use the common discovery and selection partitions. We eva
 scaling, Platt scaling, beta calibration, isotonic regression, 15-bin equal-mass histogram binning,
 a single residual tree (maximum depth 3, selected on the selection data), a boosted residual
 corrector (the residual-boosting update underlying multicalibration methods such as
-MCGrad~\cite{tax2026mcgrad}: gradient-boosted trees fitted from the frozen base logit and
+MCGrad~\cite{tax2026mcgrad}: gradient-boosted trees fitted from the base-model logit and
 early-stopped on selection; median 63--161 leaves per setting), SSR, and R-SSR. Table~\ref{tab:bench} reports the full cross-model battery; the complete context-ladder table is released with the source.
 
 \textbf{Timing.} Inference time is measured on a 2-core CPU and a T4 GPU. CPU timing uses the
@@ -268,7 +265,7 @@ TabPFN-2.5 architecture with randomly initialized weights to measure architectur
 predictive results, and GPU timing, use the released weights.
 
 \textbf{Evaluation and statistical analysis.} The primary metric is test log-loss (LL), reported
-absolutely and as improvement over the corresponding frozen base model. For the planted condition
+absolutely and as improvement over the corresponding base model. For the planted condition
 we additionally report absolute residual bias on $S^*$, the \emph{oracle} gain obtained by applying
 the optimal one-rule shift to the known subgroup, and Jaccard overlap between the detected and true
 subgroups. On Credit we report the held-out audit pass rate; harm counts seeds whose
@@ -278,11 +275,11 @@ $p<0.05$. These $p$-values are descriptive and are not multiplicity-adjusted.
 %=====================================================================
 \section{When Should We Repair Rather Than Buy More Context?}\label{sec:ladder}
 %=====================================================================
-We begin with the deployment question. For an in-context model, context size is a direct knob that
-raises predictive capability and recurring inference cost together; we study it on TabPFN-2.5. On a 2-core CPU, TabPFN-2.5 scores
+We begin with the deployment question. For an in-context model, context size raises predictive accuracy
+and recurring inference cost together; we study it on TabPFN-2.5. On a 2-core CPU, TabPFN-2.5 scores
 1{,}000 rows in \CpuSecOne\,s from a 1{,}000-row context and in \CpuSecFull\,s from 15{,}000 rows
 (\CpuFullOverOne$\times$); a T4 GPU is faster but scales similarly (\GpuSecOne\,s vs.\
-\GpuSecFull\,s). We therefore run TabPFN-2.5 on a \emph{ladder} of nested contexts: for each seed,
+\GpuSecFull\,s). We run TabPFN-2.5 on a \emph{ladder} of nested contexts: for each seed,
 the model-building split is shuffled once and context $k$ is its first $k$ rows,
 $k\in\{500,1\text{k},1.5\text{k},2\text{k},3\text{k},4\text{k},6\text{k},8\text{k},10\text{k}\}$
 and full. Logits are saved once per (dataset, seed, $k$); every correction is then fitted on CPU
@@ -293,7 +290,7 @@ using the standard correction splits of Sec.~\ref{sec:setup}.
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.9\textwidth]{fig_gain_ladder.pdf}
-\caption{Held-out log-loss improvement over frozen TabPFN-2.5 at the same context (mean and paired
+\caption{Held-out log-loss improvement over uncorrected TabPFN-2.5 at the same context (mean and paired
 95\% CI over 10 seeds; positive is better). The panels show the planted subgroup, the matched
 no-planted-effect control, and Credit Default. Global Platt recalibration gives modest gains, whereas
 local or flexible corrections can give larger gains at small contexts. SSR contracts as
@@ -301,7 +298,7 @@ context grows, tracking the shrinking oracle opportunity in the planted setting.
 \label{fig:gain}
 \end{figure*}
 
-Fig.~\ref{fig:gain} shows the main corrections across context; the full correction-by-context table is released with the source. On the planted problem, Structured
+Fig.~\ref{fig:gain} shows the main corrections across context. On the planted problem,
 SSR improves test log-loss by \PlOneScan$\times10^{-3}$ $[\PlOneScanLo,\PlOneScanHi]$ at 1{,}000
 context rows, compared with \PlOnePlatt{} for Platt, and captures
 \PlOracleShareLo--\PlOracleShareHi\% of the oracle one-rule gain at 500--1{,}000 rows. From 1{,}000
@@ -311,16 +308,16 @@ although the boosted residual corrector gives the largest raw log-loss improveme
 ladder.
 
 The decline in SSR gain at larger contexts reflects a shrinking target rather than simply poorer
-search. On the planted benchmark, frozen subgroup bias falls from \PlFiveResFrozen{} at 500 context
+search. On the planted benchmark, the base model's subgroup bias falls from \PlFiveResFrozen{} at 500 context
 rows to \PlFullResFrozen{} at full context, while the oracle one-rule gain falls from
-\PlFiveOracle{} to \PlFullOracle$\times10^{-3}$. SSR captures approximately 40--73\% of this
+\PlFiveOracle{} to \PlFullOracle$\times10^{-3}$. SSR captures 40--73\% of this
 remaining one-rule opportunity across the ladder (Table~\ref{tab:diag}). At full context its mean
 gain is only \PlFullScan{} on the planted problem and \CrFullScan{} on Credit, neither statistically
 significant.
 
 \input{tab_ladder_diag.tex}
 
-\subsection{The scan targets many of the errors that more context later reduces}\label{sec:attr}
+\subsection{SSR targets many of the errors that more context later reduces}\label{sec:attr}
 
 \begin{figure}[t]
 \centering
@@ -334,23 +331,22 @@ reference.}
 \end{figure}
 
 Similar aggregate log-loss does not by itself show that repair and additional context address the
-same deficits. We therefore compare TabPFN at each context $k$ with the corresponding full-context
+same errors. We therefore compare TabPFN at each context $k$ with the corresponding full-context
 predictor row by row (Fig.~\ref{fig:attr}). Observations flagged by SSR receive
 \PlConcLo--\PlConcHi$\times$ their expected share of the improvement delivered by full context on
 the planted problem, and \CrConcLo--\CrConcHi$\times$ on Credit for $k\le4$k; random rows would
 receive $1\times$. At 500--1{,}000 context rows, SSR moves corrected logits in the same direction
 as the full-context model in \PlSignLo--\PlSignHi\% of planted cases and
 \CrSignLo--\CrSignHi\% of Credit cases. Platt's global transformation agrees in only
-\PlattSignLo--\PlattSignHi\% of rows, approximately the chance baseline. This alignment weakens as
-$k$ approaches full context and little incremental improvement remains. Thus, at constrained
-contexts, SSR preferentially identifies observations that later benefit from additional
-context rather than merely producing a similar average loss.
+\PlattSignLo--\PlattSignHi\% of rows, about the chance level. This alignment weakens as
+$k$ approaches full context and little incremental improvement remains. At constrained
+contexts, SSR flags many of the observations that additional context later improves.
 
 \textbf{Resource accounting.} A repaired 1{,}000-row TabPFN uses held-out labels once, whereas a
-larger frozen TabPFN pays for its extra context rows on every prediction; the comparison below is
-therefore a deployment-compute trade-off, not an equal-label one. If all
+larger-context TabPFN pays for its extra rows on every prediction, so the comparison below is one of
+deployment compute, not of labels. If all
 held-out rows are instead placed into context (\PlLabCtx{} rows on the planted data, \CrLabCtx{} on
-Credit), the frozen model is more accurate (test LL about \PlLabLL{} and \CrLabLL{}) but costs
+Credit), the model is more accurate (test LL about \PlLabLL{} and \CrLabLL{}) but costs
 \PlLabCpu$\times$ and \CrLabCpu$\times$ more CPU inference per prediction than the 1{,}000-row
 model (\PlLabGpu$\times$ and \CrLabGpu$\times$ on the T4). Repair does not dominate context when
 compute is free.
@@ -363,22 +359,22 @@ compute is free.
 \caption{Test log-loss versus recurring TabPFN-2.5 prediction cost on a 2-core CPU; labels denote
 context size. Post-hoc corrections are fitted once, so their one-time fit cost is excluded from the
 horizontal axis and their recurring cost is essentially that of the underlying context. Dotted line
-and open circle mark the frozen context whose loss matches SSR applied at 1{,}000 rows.}
+and open circle mark the context at which the uncorrected model matches the loss of SSR applied at 1{,}000 rows.}
 \label{fig:frontier}
 \end{figure*}
 
 \input{tab_ladder_cost.tex}
 
 Because a fitted subgroup repair adds only a few rule comparisons at inference, its recurring cost
-is essentially that of the underlying small-context TabPFN. Figure~\ref{fig:frontier} therefore
+is essentially that of the underlying small-context TabPFN. Figure~\ref{fig:frontier}
 compares predictive loss with recurring prediction cost. At a 1{,}000-row context, SSR
 reaches a Credit test loss matched by the uncorrected model only at \CrEqScan{} context rows, and a
 planted-subgroup loss matched at \PlEqScan{} rows. Achieving the same loss through additional
 context makes each CPU prediction \CrEqScanCpu$\times$ and \PlEqScanCpu$\times$ more expensive,
 respectively (\CrEqScanGpu$\times$ and \PlEqScanGpu$\times$ on the T4), whereas SSR requires a
-one-time median CPU fit of \ScanSecOneMed\,s at this context. Platt buys only about
-\PlEqPlattX--\CrEqPlattX$\times$ context. The boosted residual corrector buys more effective
-context than SSR on Credit (\CrEqXgb{} rows versus \CrEqScan{}) but less on the planted structured
+one-time median CPU fit of \ScanSecOneMed\,s at this context. Platt matches only about
+\PlEqPlattX--\CrEqPlattX$\times$ its context. The boosted residual corrector matches a larger
+context than SSR on Credit (\CrEqXgb{} rows versus \CrEqScan{}) but a smaller one on the planted
 problem (\PlEqXgb{} versus \PlEqScan{}).
 
 On Credit, the foundation models lead the tuned trees only at full context (test LL \BPfnCrLL{}
@@ -390,7 +386,7 @@ foundation model beat a tuned tree in general; it narrows the gap to a larger co
 deployment that has already chosen the foundation model.
 
 \textbf{A second foundation model.} TabICLv2 on the same ladder (same nested contexts, splits and
-corrections) gives the same accuracy picture. At 1{,}000 rows the scan matches the uncorrected model at
+corrections) gives the same accuracy picture. At 1{,}000 rows SSR matches the uncorrected model at
 \IclPlEqScan{} rows on the planted subgroup and \IclCrEqScan{} on Credit (R-SSR:
 \IclPlEqPS{} and \IclCrEqPS), and the rows it flags again receive \IclConcLo--\IclConcHi$\times$ their
 share of the full-context improvement, moved in its direction in \IclSignLo--\IclSignHi\% of cases.
@@ -398,11 +394,11 @@ The cost picture differs. On the CPU, TabICLv2's cost per prediction grows almos
 (\IclCpuSecOne\,s per 1{,}000 rows at 1{,}000 rows, \IclCpuSecFour\,s at 4{,}000), so matching the
 repair with more context costs \IclCrEqScanCpu--\IclPlEqScanCpu$\times$ more. On the T4 it barely grows
 (\IclGpuSecOne\,s to \IclGpuSecFour\,s), and the saving shrinks to \IclCrEqScanGpu--\IclPlEqScanGpu$\times$.
-Whether repair is cheaper than context therefore depends on how the model's inference cost scales with
+Whether repair is cheaper than context depends on how the model's inference cost scales with
 context on the hardware that serves it.
 
 \subsection{Abstention as the model strengthens}
-As confirmed localized residual structure disappears, a selective repair should intervene less. On
+As confirmed subgroup error disappears, a selective repair should intervene less. On
 Credit, the fraction of seeds with an accepted SSR rule falls from \CrFiveInterv{} at 500 rows to
 \CrFullInterv{} at full context, while the fraction of accepted rules passing the audit falls from
 \CrFiveAudit{} to \CrFullAudit. In the no-planted-effect condition, mean SSR gain approaches zero
@@ -410,37 +406,36 @@ as context grows, although the nominal acceptance criterion still admits some sp
 2{,}000 rows onward, \NuHarmLo--\NuHarmHi{} of 10 seeds are made slightly worse, with a
 nonsignificant mean change of $\NuFullScan$ at full context. In these foundation-model settings,
 R-SSR has a positive mean at every context (\NuPSMin{} to \NuPSMax), consistent with
-it first removing broad miscalibration before searching for localized residual structure. We therefore view
-the two-stage variant as useful when global and local calibration errors coexist, rather than as a
-universally superior form of SSR.
+it removing broad miscalibration before searching for subgroup error. The two-stage variant suits
+settings where global and local calibration errors coexist; it is not uniformly better than SSR.
 %=====================================================================
 \section{Structured Repair Across Model Families}\label{sec:general}
 %=====================================================================
 We now ask whether the targeted error, and its repair, are specific to in-context models.
 \input{tab_bench.tex}
 
-\subsection{Strong predictors leave a common localized residual}
-Table~\ref{tab:bench} compares the four frozen base configurations under the standard correction-data
+\subsection{All four base models leave a common subgroup error}
+Table~\ref{tab:bench} compares the four base models under the standard correction-data
 budget. On the planted benchmark their overall test log-loss is similar, yet all four retain
 substantial error on the known subgroup: absolute residual bias is \BBiasLo--\BBiasHi, and
 correcting the true subgroup with its optimal one-rule shift would improve test log-loss by
-\BOracleLo--\BOracleHi$\times10^{-3}$. Global recalibration changes this localized error only
+\BOracleLo--\BOracleHi$\times10^{-3}$. Global recalibration changes this subgroup error only
 modestly; Platt, beta and isotonic reduce subgroup bias by \BCalRedLo--\BCalRedHi\%. With only 2{,}400 discovery
 observations, however, SSR does not recover the subgroup reliably: it accepts a rule in
 \BXgbPlRep{} XGBoost, \BCatPlRep{} CatBoost, \BIclPlRep{} TabICLv2 and \BPfnPlRep{} TabPFN-2.5
 runs. Consequently, its mean gains at this discovery size are small, whereas R-SSR gives
-the largest mean improvement on the planted condition for all four backbones.
+the largest mean improvement on the planted condition for all four base models.
 
 \subsection{Repairability is not the same as detectability}
-The weak 2{,}400-row result does not mean that the tree backbones have absorbed the planted
+The weak 2{,}400-row result does not mean that the tree models have absorbed the planted
 structure. The true subgroup remains worth a similar discovery-set likelihood gain under all four
 models (13--17 nats on average). The difficulty is statistical: identifying a five-feature
 conjunction among 30 variables from 2{,}400 observations leaves many chance patterns with competitive
 scores. We therefore repeat the experiment on a separate $n=19{,}200$ draw and, within that draw,
-hold the frozen base models, selection set and test set fixed while varying only the scan's discovery
+hold the base models, selection set and test set fixed while varying only SSR's discovery
 sample from 2{,}400 to 9{,}600 observations (Table~\ref{tab:disc}, Fig.~\ref{fig:disc}).
 
-With 9{,}600 discovery observations, the earlier backbone dependence largely disappears. Structured
+With 9{,}600 discovery observations, the earlier dependence on the base model largely disappears.
 SSR accepts a repair in \DRepLo--10 of 10 runs for every model, recovers
 \DShareLo--\DShareHi\% of the best available one-rule gain, and identifies rules with Jaccard
 \DJacLo--\DJacHi{} overlap with the true subgroup. The correction reduces absolute subgroup bias
@@ -448,7 +443,7 @@ from \DBiasFLo--\DBiasFHi{} to \DBiasSLo--\DBiasSHi, a \DBiasRedLo--\DBiasRedHi\
 In the matched no-planted-effect control, increasing discovery data does not produce a corresponding
 increase in harm: mean SSR gain remains within $\pm$\DNullAbsMax$\times10^{-3}$, with at most
 \DNullHarmMax{} harmful seeds. In this controlled setting, the main limitation at the smaller
-discovery size is detectability rather than absence of repairable residual structure.
+discovery size is detectability: the repairable error is present but hard to find.
 
 \input{tab_disc.tex}
 
@@ -456,20 +451,20 @@ discovery size is detectability rather than absence of repairable residual struc
 \centering
 \includegraphics[width=0.8\columnwidth]{fig_disc.pdf}
 \caption{Model-agnostic recovery of the planted subgroup in the separate $n=19{,}200$ discovery-power
-experiment (test-set absolute residual, mean over 10 seeds; lower is better). Grey circles are frozen
+experiment (test-set absolute residual, mean over 10 seeds; lower is better). Grey circles are
 base models; orange squares are Platt; light and dark blue diamonds are SSR with 2{,}400
 and 9{,}600 discovery rows; black ticks are the known subgroup with its optimal one-rule shift. The
-larger discovery sample moves all four backbones toward the oracle.}
+larger discovery sample moves all four models toward the oracle.}
 \label{fig:disc}
 \end{figure}
 
-\subsection{When little structured residual remains, the scan mostly abstains}
-Credit Default presents a different regime. The two foundation models give the strongest frozen
-predictions (test LL \BPfnCrLL--\BIclCrLL; AUROC \BPfnCrAUC--\BIclCrAUC), compared with LL
-\BXgbCrLL--\BCatCrLL{} for the tuned trees. Across all four backbones, SSR finds little
-validated localized residual: it intervenes in only \BCatCrRep--\BPfnCrRep{} runs and changes mean
+\subsection{When little subgroup error remains, SSR mostly abstains}
+Credit Default presents a different regime. The two foundation models are the most accurate base
+models (test LL \BPfnCrLL--\BIclCrLL; AUROC \BPfnCrAUC--\BIclCrAUC), compared with LL
+\BXgbCrLL--\BCatCrLL{} for the tuned trees. Across all four models, SSR finds little
+validated subgroup error: it intervenes in only \BCatCrRep--\BPfnCrRep{} runs and changes mean
 test log-loss by at most $0.3\times10^{-3}$. The foundation models instead retain modest global
-miscalibration, for which Platt and beta improve log-loss by approximately
+miscalibration, for which Platt and beta improve log-loss by about
 $1.3$--$1.5\times10^{-3}$; corresponding gains for the tuned trees are at most
 $0.2\times10^{-3}$.
 
@@ -477,18 +472,17 @@ The no-planted-effect control shows the same distinction: global recalibration s
 foundation models, whereas SSR has near-zero average effect. Across the full correction battery,
 isotonic regression and histogram binning tend to overfit, while the boosted residual corrector is
 positive in all 12 model--dataset settings and is strongest among the alternatives for several
-Credit and control settings. That gain comes from a substantially higher-capacity correction,
-typically tens to hundreds of leaves, whereas SSR seeks a small number of named,
-held-out-validated subgroup shifts and can return the frozen model unchanged. Thus, when a strong
-in-distribution predictor leaves little confirmed localized structure, abstention is part of the
-intended behaviour rather than a failed repair.
+Credit and control settings. That gain comes from a much higher-capacity correction,
+typically tens to hundreds of leaves, whereas SSR seeks a few named subgroup shifts, each validated
+on held-out data, and can return the model unchanged. When an accurate model leaves little confirmed
+subgroup error, abstaining is the intended outcome.
 %=====================================================================
 \section{Exact CPU Acceleration of Structured Scan Repair}\label{sec:systems}
 %=====================================================================
 Profiling the reference implementation on the planted benchmark shows that approximately
 \CostScorerShare\% of fit time is spent in the exact scorer~\eqref{eq:gain}, which is invoked
-roughly 65{,}000 times for a standard 2{,}400-row, 30-feature discovery set. We therefore optimize
-this bottleneck without changing the scanner's statistical decisions. First, a Numba
+roughly 65{,}000 times for a standard 2{,}400-row, 30-feature discovery set. We optimize
+this bottleneck without changing any of SSR's statistical decisions. First, a Numba
 implementation~\cite{lam2015numba} fuses each Newton solve into one compiled loop while preserving
 its iteration, clipping and stopping rules. Second, shortlisted thresholds for a
 (feature, parent-rule) pair are scored in one compiled batch using lookup tables rather than
@@ -523,16 +517,15 @@ other accelerators; shortlisted candidates would still be re-scored exactly befo
 %=====================================================================
 \section{Discussion, Limitations and Outlook}\label{sec:disc}
 %=====================================================================
-\textbf{What the results say.} In the planted benchmark, strong predictors from both paradigms leave a
-comparable localized residual. Global recalibration changes that defect only modestly, whereas SSR can
-remove most of it once sufficient discovery evidence is available. Credit shows the complementary regime: when a strong
-in-distribution model leaves little validated localized residual, SSR mostly abstains, while global
+\textbf{What the results say.} In the planted benchmark, tuned trees and foundation models leave a
+comparable subgroup error. Global recalibration changes that error only modestly, whereas SSR
+removes most of it once enough discovery data are available. Credit shows the complementary regime: when an
+accurate model leaves little validated subgroup error, SSR mostly abstains, while global
 recalibration or a higher-capacity residual learner may be more useful.
 
-The correction methods therefore occupy distinct operating regimes rather than forming a single
-ranking. Global calibration is appropriate when residual error is broad; a flexible boosted
+No single correction is best across these regimes. Global calibration suits broad residual error; a flexible boosted
 residual learner can maximize predictive gain when additional correction complexity is acceptable;
-SSR is designed for sparse, interpretable localized errors that can be independently
+SSR is designed for sparse, interpretable subgroup errors that can be independently
 validated and rejected when evidence is weak. Relative to multicalibration boosting such as
 MCGrad~\cite{tax2026mcgrad}, which finds miscalibrated regions implicitly, validates its ensemble by
 early stopping and rescales every logit, SSR names each corrected subgroup, tests each
@@ -555,11 +548,10 @@ much of the scan can a binned kernel move onto accelerators before exact rescori
 
 \section*{Reproducibility}
 Base-model logits are saved once for every dataset, seed and context, and all corrections, tables
-and figures are regenerated from those frozen predictions on CPU. Canonical foundation-model runs
-use a free-tier T4 GPU. Repeating TabICLv2 on an A100 changes frozen test log-loss by at most
+and figures are regenerated from those saved predictions on CPU. Foundation-model runs
+use a T4 GPU; repeating TabICLv2 on an A100 changes base-model test log-loss by at most
 $7\times10^{-5}$ per run and no accept/abstain decision. The Credit Default
-analysis uses the original UCI data and reproduces the earlier tree-model baseline (test LL
-\CreditXGBbase{} versus 0.4341). Released code records package versions, splits and seeds.
+analysis uses the original UCI data. Released code records package versions, splits and seeds.
 \bibliographystyle{IEEEtran}
 \bibliography{refs}
 

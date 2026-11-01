@@ -2,8 +2,8 @@
 
 **Fast, interpretable subgroup repair for tabular foundation models (TabPFN, TabICL) and gradient-boosted trees (XGBoost, CatBoost)**
 
-Code for the AccML 2027 paper *Fix What the Model Leaves Behind: Fast Subgroup Repair for Tree Ensembles and Tabular
-Foundation Models*. It contains the method, every experiment, and the scripts that rebuild every table, figure and
+Code for the AccML 2027 paper *Repair Once or Pay per Prediction? Subgroup Repair versus More
+Context for Tabular Foundation Models*. It contains the method, every experiment, and the scripts that rebuild every table, figure and
 number in the paper.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -17,7 +17,7 @@ number in the paper.
 
 A tabular classifier can be accurate on average yet systematically wrong for one **subgroup defined by a combination
 of features**. Tuning and global recalibration (temperature, Platt, beta, isotonic) do not remove such errors.
-**Structured Scan Repair** is a post-hoc layer for any frozen probabilistic classifier. It:
+**Structured Scan Repair** is a post-hoc correction for any fitted probabilistic classifier. It:
 
 1. searches interpretable conjunctions on the original features (`age > 52 AND limit <= 30,000 AND ...`) for the
    largest exact Bernoulli log-likelihood gain of one log-odds shift,

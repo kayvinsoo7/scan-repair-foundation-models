@@ -57,8 +57,8 @@ open(RESULTS / "tab_bench_main_corrections.tex", "w").write("\n".join(L) + "\n")
 
 # ---------- discovery arm ----------
 L = ["\\begin{table}[t]", "\\centering",
-     "\\caption{Discovery-power experiment on a separate $n=19{,}200$ draw. Within each model and seed, the frozen "
-     "predictor, selection set and test set are fixed; SSR receives 2{,}400 or 9{,}600 discovery rows. Gain: mean test "
+     "\\caption{Discovery-power experiment on a separate $n=19{,}200$ draw. Within each model and seed, the base "
+     "model, selection set and test set are fixed; SSR receives 2{,}400 or 9{,}600 discovery rows. Gain: mean test "
      "log-loss improvement ($\\times10^{-3}$); Oracle share: fraction of the best one-rule gain; Jacc.: overlap with the "
      "planted subgroup. Null gain (harmful seeds) is from the matched no-planted-effect control. "
      "Acceptance at 2.4k differs from Table~\\ref{tab:bench} because this is a separate draw.}",
@@ -106,7 +106,7 @@ mac("BCalRedLo", f"{_red.min().min():.0f}"); mac("BCalRedHi", f"{_red.max().max(
 ALL = [("temperature", "Temp."), ("Platt", "Platt"), ("beta", "Beta"), ("isotonic", "Iso."), ("histogram binning", "Hist."),
        ("residual tree", "Tree"), ("boosted residual (XGB)", "Boost."), ("scan", "SSR"), ("Platt->scan", "R-SSR")]
 L = ["\\begin{table*}[t]", "\\centering",
-     "\\caption{Frozen-backbone benchmark under the standard correction budget. LL is frozen test log-loss; other "
+     "\\caption{Base-model benchmark under the standard correction budget. LL is base-model test log-loss; other "
      "entries are mean improvement ($\\times10^{-3}$, positive is better) over 10 matched seeds. * paired $p<0.05$ "
      "(descriptive, unadjusted); bold: largest mean in the row. Corrections are defined in Sec.~III; R-SSR: Platt, then SSR.}",
      "\\label{tab:bench}", "\\footnotesize\\setlength{\\tabcolsep}{4pt}",
@@ -128,7 +128,7 @@ mac("XgbBoostLeaves", f"{B[(B.method == 'boosted residual (XGB)')].groupby(['dat
 plt.rcParams.update({"font.size": 7.5, "pdf.fonttype": 42, "font.family": "DejaVu Sans"})
 INK, MUTED, GRID = "#0b0b0b", "#52514e", "#e4e3df"
 fig, ax = plt.subplots(figsize=(3.45, 2.05))
-items = [("bias_frozen", "Frozen base model", MUTED, "o", None), ("bias_Platt", "Platt", "#eb6834", "s", None),
+items = [("bias_frozen", "Base model", MUTED, "o", None), ("bias_Platt", "Platt", "#eb6834", "s", None),
          ("bias_scan", "SSR, 2.4k discovery rows", "#b9d4f3", "D", "2.4k"), ("bias_scan", "SSR, 9.6k discovery rows", "#1f5fae", "D", "9.6k")]
 ys = np.arange(len(MODELS))[::-1]
 for (col, lab, colr, mk, size) in items:

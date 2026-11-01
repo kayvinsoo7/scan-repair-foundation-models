@@ -21,7 +21,7 @@ keywords:
   - inference cost
 preferred-citation:
   type: conference-paper
-  title: "Fix What the Model Leaves Behind: Fast Subgroup Repair for Tree Ensembles and Tabular Foundation Models"
+  title: "Repair Once or Pay per Prediction? Subgroup Repair versus More Context for Tabular Foundation Models"
   authors:
     - family-names: "<FAMILY NAME>"
       given-names: "<GIVEN NAMES>"
