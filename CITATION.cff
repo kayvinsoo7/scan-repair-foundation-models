@@ -1,10 +1,11 @@
 cff-version: 1.2.0
 message: "If you use this code, please cite the paper and the archived artistry repository."
-title: "Scan Repair for Foundation Models: Fast Subgroup Repair for Tree Ensembles and Tabular Foundation Models"
+title: "Scan Repair for Foundation Models"
 type: software
 authors:
-  - family-names: "<FAMILY NAME>"
-    given-names: "<GIVEN NAMES>"
+  - family-names: "Adetunji"
+    given-names: "Kayode E."
+    affiliation: "Sydney Brenner Institute for Molecular Bioscience; Machine Intelligence and Neural Discovery (MIND) Institute; School of Electrical and Information Engineering, University of the Witwatersrand, Johannesburg, South Africa"
     # orcid: "https://orcid.org/0000-0000-0000-0000"
 repository-code: "https://github.com/kayvinsoo7/scan-repair-foundation-models"
 license: MIT
@@ -23,8 +24,8 @@ preferred-citation:
   type: conference-paper
   title: "Repair Once or Pay per Prediction? Subgroup Repair versus More Context for Tabular Foundation Models"
   authors:
-    - family-names: "<FAMILY NAME>"
-      given-names: "<GIVEN NAMES>"
+    - family-names: "Adetunji"
+      given-names: "Kayode E."
   conference:
     name: "AccML 2027: Workshop on Accelerated Machine Learning, co-located with HiPEAC 2027"
   year: 2027

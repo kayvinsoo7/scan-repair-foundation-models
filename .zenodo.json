@@ -2,7 +2,7 @@
   "title": "Scan Repair for Foundation Models: code for 'Repair Once or Pay per Prediction? Subgroup Repair versus More Context for Tabular Foundation Models' (AccML 2027)",
   "upload_type": "software",
   "description": "Structured Scan Repair: fast, interpretable, held-out-validated subgroup repair for fitted tabular classifiers (TabPFN-2.5, TabICLv2, XGBoost, CatBoost), with every experiment and the scripts that rebuild every table, figure and number of the AccML 2027 paper. Saved logits and results are archived separately (scan-repair-foundation-models-artistry).",
-  "creators": [{"name": "<FAMILY NAME>, <GIVEN NAMES>", "affiliation": "<AFFILIATION>"}],
+  "creators": [{"name": "Adetunji, Kayode E.", "affiliation": "Sydney Brenner Institute for Molecular Bioscience; Machine Intelligence and Neural Discovery (MIND) Institute; School of Electrical and Information Engineering, University of the Witwatersrand, Johannesburg, South Africa"}],
   "license": "MIT",
   "keywords": ["tabular foundation models", "TabPFN", "TabICL", "XGBoost", "CatBoost", "post-hoc model repair", "subgroup calibration", "subset scanning", "in-context learning", "CPU acceleration"],
   "related_identifiers": [{"identifier": "https://github.com/kayvinsoo7/scan-repair-foundation-models-artistry", "relation": "isSupplementedBy", "scheme": "url"}]

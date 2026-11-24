@@ -138,4 +138,5 @@ in the artistry repository).
 
 ## Author
 
-<AUTHOR NAME> (<AFFILIATION>).
+Kayode E. Adetunji (Sydney Brenner Institute for Molecular Bioscience; Machine Intelligence and Neural Discovery (MIND)
+Institute; School of Electrical and Information Engineering; University of the Witwatersrand, Johannesburg, South Africa).
