@@ -15,13 +15,14 @@
 \input{numbers_bench.tex}
 
 \begin{document}
+\bstctlcite{IEEEexample:BSTcontrol}
 
 \title{Repair Once or Pay per Prediction?\\Subgroup Repair versus More Context\\for Tabular Foundation Models}
 
 \author{\IEEEauthorblockN{Kayode E. Adetunji}
+\textit{Sydney Brenner Institute for Molecular Bioscience}\\
 \IEEEauthorblockA{\textit{Machine Intelligence and Neural Discovery (MIND) Institute}\\
 \textit{School of Electrical and Information Engineering}\\
-\textit{Sydney Brenner Institute for Molecular Bioscience}\\
 University of the Witwatersrand, Johannesburg, South Africa\\
 kayode.adetunji1@wits.ac.za}}
 
@@ -539,7 +540,7 @@ models; broader validation is needed. Structured subgroup discovery is data-hung
 (Sec.~\ref{sec:general}). The acceptance test is nominal because the selection data
 also choose among up to five candidates; a simulation for TabPFN-2.5 with 200 null scans per setting
 puts its false-acceptance rate at about 13\%, and a calibrated threshold leaves all conclusions
-unchanged.
+unchanged. 
 
 \textbf{Next steps and open questions.} The results motivate four extensions: (a) an
 accelerator-oriented candidate-scoring kernel; (b) context-level repair; (c) repair under temporal
@@ -553,9 +554,9 @@ Base-model logits are saved once for every dataset, seed and context, and all co
 and figures are regenerated from those saved predictions on CPU. Foundation-model runs
 use a T4 GPU; repeating TabICLv2 on an A100 changes base-model test log-loss by at most
 $7\times10^{-5}$ per run and no accept/abstain decision. The Credit Default
-analysis uses the original UCI data. Released code records package versions, splits and seeds.
+analysis uses the original UCI data. Code, saved predictions and the scripts that rebuild every table and figure are available at \url{https://github.com/kayvinsoo7/scan-repair-foundation-models}.
 \section*{Acknowledgment}
-The author thanks Scott Hazelhurst for advice on this work. This work was supported by the MADIVA
+The author thanks Professor Scott Hazelhurst for advice on this work. This work was supported by the MADIVA
 research hub, funded by the National Institutes of Health under award U54TW012077 (DS-I Africa
 programme). The content is solely the responsibility of the author and does not necessarily
 represent the official views of the National Institutes of Health.
