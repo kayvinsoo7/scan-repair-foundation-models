@@ -271,9 +271,7 @@ corrector (a baseline using the residual-boosting update underlying methods such
 MCGrad~\cite{tax2026mcgrad}, not a full MCGrad implementation: gradient-boosted trees fitted from the base-model logit and
 early-stopped on selection; median 63--161 leaves per setting), SSR, and R-SSR. Table~\ref{tab:bench} reports the full cross-model battery.
 
-\textbf{Timing.} Inference time is measured on a 2-core CPU and a T4 GPU. CPU timing uses the released
-TabPFN-2.5 architecture (10.7M parameters) with randomly initialized weights, as weight values do not
-change CPU time (checked by rescaling all weights); all predictive results, and GPU timing, use the released weights.
+\textbf{Timing.} Inference time is measured on a 2-core CPU and a T4 GPU. CPU timing uses the released TabPFN-2.5 architecture (10.7M parameters) with randomly initialized weights; rescaling these weights produced no material change in measured runtime. All predictive evaluations and GPU timing use the released weights.
 
 \textbf{Evaluation and statistical analysis.} The primary metric is test log-loss (LL), reported
 absolutely and as improvement over the corresponding base model. For the planted condition
@@ -533,12 +531,7 @@ removes most of it once enough discovery data are available. Credit shows the co
 strong base model leaves little validated subgroup error, SSR mostly abstains, while global
 recalibration or a higher-capacity residual learner may be more useful.
 
-No single correction is best across these regimes. Global calibration suits broad residual error; a flexible boosted
-residual learner can maximize predictive gain when additional correction complexity is acceptable;
-SSR is designed for sparse, interpretable subgroup errors that can be independently
-validated and rejected when evidence is weak. Unlike multicalibration boosting~\cite{tax2026mcgrad},
-SSR changes only rows inside accepted rules, which keeps each adjustment inspectable; in exchange, it
-offers no guarantee over a class of groups.
+No single correction is best across these regimes. Global calibration suits broad residual error; a flexible boosted residual learner can capture more complex errors when additional correction complexity is acceptable. SSR instead targets localized errors using a few validated subgroup rules, making it clear which predictions are changed and by how much.
 
 \textbf{Limitations.} The study uses one synthetic generator, one real dataset and two in-context
 models; broader validation is needed. Structured subgroup discovery is data-hungry
