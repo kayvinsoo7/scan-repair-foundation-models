@@ -108,7 +108,7 @@ We propose Structured Scan Repair (SSR), a post-hoc method that identifies subgr
 prediction errors and selectively corrects them. SSR searches over rules defined on the original
 features, scoring each by the maximum Bernoulli log-likelihood gain from a common log-odds
 adjustment~\cite{zhang2016bias}. Candidate corrections are evaluated on selection data held out from
-discovery, and SSR applies those that meet its acceptance criteria or abstains if none qualify. The
+discovery. SSR selects corrections over successive rounds and abstains if none qualify. The
 base model and its context remain unchanged, while inference adds only a few rule comparisons.
 
 Our contributions are:
@@ -116,7 +116,7 @@ Our contributions are:
 \item \textbf{A validated, model-agnostic repair method} (Secs.~\ref{sec:method},~\ref{sec:general}).
 With 9{,}600 discovery rows, SSR reduces planted subgroup residual bias by
 \DBiasRedLo--\DBiasRedHi\% across tuned XGBoost, CatBoost, TabPFN-2.5 and TabICLv2, with near-zero
-average change when no subgroup effect is planted.
+average change in test log-loss when no subgroup effect is planted.
 \item \textbf{A context--compute trade-off for tabular foundation models} (Sec.~\ref{sec:ladder}).
 SSR enables TabPFN-2.5 with a 1{,}000-row context to achieve predictive performance comparable to the
 uncorrected model using approximately 2{,}200 and 4{,}200 context rows on Credit Default and a
@@ -286,8 +286,8 @@ $p<0.05$. These $p$-values are descriptive and are not multiplicity-adjusted.
 %=====================================================================
 \section{When Should We Repair Rather Than Buy More Context?}\label{sec:ladder}
 %=====================================================================
-We begin with the deployment question. For an in-context model, context size raises predictive accuracy
-and recurring inference cost together; we study it on TabPFN-2.5. On a 2-core CPU, TabPFN-2.5 scores
+We begin with the deployment question. For an in-context model, increasing context can improve predictive
+performance while raising recurring inference cost; we study this on TabPFN-2.5. On a 2-core CPU, TabPFN-2.5 scores
 1{,}000 rows in \CpuSecOne\,s from a 1{,}000-row context and in \CpuSecFull\,s from 15{,}000 rows
 (\CpuFullOverOne$\times$); a T4 GPU is faster but scales similarly (\GpuSecOne\,s vs.\
 \GpuSecFull\,s). We run TabPFN-2.5 on a \emph{ladder} of nested contexts: for each seed,
@@ -323,8 +323,7 @@ search. On the planted benchmark, the base model's subgroup bias falls from \PlF
 rows to \PlFullResFrozen{} at full context, while the oracle one-rule gain falls from
 \PlFiveOracle{} to \PlFullOracle$\times10^{-3}$. SSR captures 40--73\% of this
 remaining one-rule opportunity across the ladder (Table~\ref{tab:diag}). At full context its mean
-gain is only \PlFullScan{} on the planted problem and \CrFullScan{} on Credit, neither statistically
-significant.
+gain is only \PlFullScan$\times10^{-3}$ on the planted problem and \CrFullScan$\times10^{-3}$ on Credit.
 
 \input{tab_ladder_diag.tex}
 
@@ -397,7 +396,7 @@ foundation model beat a tuned tree in general; it narrows the gap to a larger co
 deployment that has already chosen the foundation model.
 
 \textbf{A second foundation model.} TabICLv2 on the same ladder (same nested contexts, splits and
-corrections) gives the same accuracy picture. At 1{,}000 rows SSR matches the uncorrected model at
+corrections) shows a similar predictive-performance pattern. At 1{,}000 rows SSR matches the uncorrected model at
 \IclPlEqScan{} rows on the planted subgroup and \IclCrEqScan{} on Credit (R-SSR:
 \IclPlEqPS{} and \IclCrEqPS), and the rows it flags again receive \IclConcLo--\IclConcHi$\times$ their
 share of the full-context improvement, moved in its direction in \IclSignLo--\IclSignHi\% of cases.
@@ -415,7 +414,7 @@ Credit, the fraction of seeds with an accepted SSR rule falls from \CrFiveInterv
 \CrFiveAudit{} to \CrFullAudit. In the no-planted-effect condition, mean SSR gain approaches zero
 as context grows, although the nominal acceptance criterion still admits some spurious rules: from
 2{,}000 rows onward, \NuHarmLo--\NuHarmHi{} of 10 seeds are made slightly worse, with a
-nonsignificant mean change of $\NuFullScan$ at full context. In these foundation-model settings,
+mean change of $\NuFullScan\times10^{-3}$ at full context. In these foundation-model settings,
 R-SSR has a positive mean at every context (\NuPSMin{} to \NuPSMax), consistent with
 it removing broad miscalibration before searching for subgroup error. The two-stage variant suits
 settings where global and local calibration errors coexist; it is not uniformly better than SSR.

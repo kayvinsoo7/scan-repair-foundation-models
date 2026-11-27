@@ -186,7 +186,7 @@ for dev, dn in [("cpu", "Cpu"), ("gpu", "Gpu")]:
 with open(os.path.join(PAPER, "numbers_ladder.tex"), "w") as fh:
     for k, v in sorted(M.items()): fh.write(f"\\newcommand{{\\{k}}}{{{v}}}\n")
 sec = lambda f, dev, k: f"{f(dev, k):,.0f}".replace(",", "{,}") if dev == "cpu" else f"{f(dev, k):.1f}"
-L = ["\\begin{table}[t]", "\\centering", "\\caption{Recurring context cost and equivalent-context accuracy for the two foundation "
+L = ["\\begin{table}[t]", "\\centering", "\\caption{Recurring context cost and equivalent-context performance for the two foundation "
      "models. Top: seconds to score 1{,}000 rows at representative contexts (2-core CPU; T4 GPU). Bottom: for a correction "
      "fitted at a 1{,}000-row context, the context (Ctx) at which the uncorrected model matches its test loss, and the "
      "corresponding recurring cost multiplier. SSR fitting is one-time "
