@@ -269,11 +269,11 @@ scaling, Platt scaling, beta calibration, isotonic regression, 15-bin equal-mass
 a single residual tree (maximum depth 3, selected on the selection data), a boosted residual
 corrector (the residual-boosting update underlying multicalibration methods such as
 MCGrad~\cite{tax2026mcgrad}: gradient-boosted trees fitted from the base-model logit and
-early-stopped on selection; median 63--161 leaves per setting), SSR, and R-SSR. Table~\ref{tab:bench} reports the full cross-model battery; the complete context-ladder table is released with the source.
+early-stopped on selection; median 63--161 leaves per setting), SSR, and R-SSR. Table~\ref{tab:bench} reports the full cross-model battery.
 
-\textbf{Timing.} Inference time is measured on a 2-core CPU and a T4 GPU. CPU timing uses the
-TabPFN-2.5 architecture with randomly initialized weights to measure architecture-level compute; all
-predictive results, and GPU timing, use the released weights.
+\textbf{Timing.} Inference time is measured on a 2-core CPU and a T4 GPU. CPU timing uses the released
+TabPFN-2.5 architecture (10.7M parameters) with randomly initialized weights, as weight values do not
+change CPU time; all predictive results, and GPU timing, use the released weights.
 
 \textbf{Evaluation and statistical analysis.} The primary metric is test log-loss (LL), reported
 absolutely and as improvement over the corresponding base model. For the planted condition
@@ -379,10 +379,10 @@ Because a fitted subgroup repair adds only a few rule comparisons at inference, 
 is essentially that of the underlying small-context TabPFN. Figure~\ref{fig:frontier}
 compares predictive loss with recurring prediction cost. At a 1{,}000-row context, SSR
 reaches a Credit test loss matched by the uncorrected model only at \CrEqScan{} context rows, and a
-planted-subgroup loss matched at \PlEqScan{} rows. Achieving the same loss through additional
+planted-subgroup loss matched at \PlEqScan{} rows. Equivalent contexts and costs are interpolated between measured ladder
+points. Achieving the same loss through additional
 context makes each CPU prediction \CrEqScanCpu$\times$ and \PlEqScanCpu$\times$ more expensive,
-respectively (\CrEqScanGpu$\times$ and \PlEqScanGpu$\times$ on the T4), whereas SSR requires a
-one-time median CPU fit of \ScanSecOneMed\,s at this context. Platt matches only about
+respectively (\CrEqScanGpu$\times$ and \PlEqScanGpu$\times$ on the T4). Platt matches only about
 \PlEqPlattX--\CrEqPlattX$\times$ its context. The boosted residual corrector matches a larger
 context than SSR on Credit (\CrEqXgb{} rows versus \CrEqScan{}) but a smaller one on the planted
 problem (\PlEqXgb{} versus \PlEqScan{}).
