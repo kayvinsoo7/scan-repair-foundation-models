@@ -30,7 +30,7 @@ kayode.adetunji1@wits.ac.za}}
 
 \begin{abstract}
 Tabular foundation models have recently become competitive with tuned tree-based predictors. They
-use labelled examples as context to make predictions without task-specific training. Increasing this
+use labeled examples as context to make predictions without task-specific training. Increasing this
 context can improve predictive performance, but may also raise computational costs. An alternative is
 to improve predictions made with a smaller context by correcting errors concentrated in particular
 subgroups. This paper proposes Structured Scan Repair (SSR), a post-hoc method that uses a one-time
@@ -59,73 +59,79 @@ subset scanning, calibration, gradient boosting
 \section{Introduction}
 %=====================================================================
 Tabular foundation models such as TabPFN~\cite{hollmann2023tabpfn,hollmann2025nature,grinsztajn2025tabpfn25}
-and TabICL~\cite{qu2025tabicl,qu2026tabiclv2} predict new rows from labeled examples supplied in
-context, without updating their pretrained weights. Here, the context is the set of labeled rows
-supplied to the model at prediction time; context size is the number of such rows. These models are
-now competitive with tuned gradient-boosted
-trees~\cite{erickson2025tabarena,chen2016xgboost,prokhorenkova2018catboost} and need no per-dataset
-training or tuning: new labeled data are used by updating the context, without retraining. That
-convenience moves cost from training to inference. A boosted ensemble is trained once and scored
-cheaply; an in-context model conditions every prediction on its context, so a larger context improves
-accuracy (Sec.~\ref{sec:ladder}) but raises recurring inference cost, latency and memory. On a 2-core CPU, TabPFN-2.5 takes \CpuSecOne\,s to score
-1{,}000 rows from a 1{,}000-row context and \CpuSecFull\,s from 15{,}000 rows. For deployments bound by
-a CPU budget, an edge device or a latency target, context size becomes a resource to be spent carefully.
+and TabICL~\cite{qu2025tabicl,qu2026tabiclv2} have recently become competitive with tuned
+gradient-boosted trees~\cite{erickson2025tabarena,chen2016xgboost,prokhorenkova2018catboost}. Rather
+than training a separate model for each dataset, they predict new observations using labeled examples
+supplied as context. Context is the set of labeled rows provided at prediction time, and context size
+is the number of those rows. That convenience moves cost from training to inference. A boosted
+ensemble is trained once and scored cheaply, whereas an in-context model processes its context to make
+predictions. A larger context can improve predictive performance, but the additional inference cost
+recurs. On a two-core CPU, for example, TabPFN-2.5 takes \CpuSecOne{} seconds to score 1{,}000
+observations with a 1{,}000-row context, compared with \CpuSecFull{} seconds using 15{,}000 rows. For
+applications using foundation models, context size must be chosen with CPU, memory, and latency
+constraints in mind.
 
-This paper asks a deployment question: when a small-context model is wrong in a localized, repairable
-way, can a one-time correction recover the accuracy that more context would buy, at a fraction of the
-recurring cost? The correction needs labeled rows the model has not seen, rows that could instead be
-added to the context. We therefore compare repair and context as uses of a compute budget, not of a
-label budget.
+Rather than always adding context, we could examine the errors left by a smaller-context model. If
+some are concentrated in subgroups defined by combinations of features, we may be able to correct
+them without repeatedly processing a larger context.
+{\setlength{\topsep}{2pt}\setlength{\partopsep}{0pt}\begin{quote}
+\itshape We ask: when can a one-time subgroup repair recover part of the predictive benefit of a
+larger context at a fraction of its recurring cost?
+\end{quote}}
+Such a repair needs labeled observations for discovery and validation, and those observations could
+instead be added to the foundation model's context. We compare repair and additional context as uses
+of inference computation, not as equivalent uses of labeled data. In our experiments, adding those
+observations directly to the context gives better predictions when computation is unrestricted.
 
-The error we target is a subgroup, defined by a combination of features, for which a model that is
-well calibrated on average is systematically wrong. Global recalibration (temperature
-scaling~\cite{guo2017calibration}, Platt~\cite{platt1999}, beta~\cite{kull2017beta}, isotonic
-regression~\cite{zadrozny2002}, histogram binning~\cite{zadrozny2001}) applies one transformation to
-all predictions and cannot correct one subgroup without moving the rest. Multicalibration,
-multiaccuracy and flexible residual learners~\cite{hebert2018multicalibration,kim2019multiaccuracy},
-deployed at web scale~\cite{tax2026mcgrad} and applied to clinical risk models~\cite{barda2021subpopulation}, can correct richer residual
-structure, but they do not aim to return a small set of interpretable subgroup shifts that are
-independently validated and explicitly rejected when evidence is insufficient. Slice
-finders~\cite{chung2019slicefinder,sagadeeva2021sliceline} locate high-loss subsets. Predictive-bias
-scanning~\cite{zhang2016bias}, built on subset scanning~\cite{neill2012fast}, detects significantly
-miscalibrated subgroups and illustrates refitting a transparent model with detected subgroup terms;
-recent extensions remain audit-only by design~\cite{boxer2026intersectional}.
+Existing methods address prediction errors in different ways. Global recalibration methods, including
+temperature scaling~\cite{guo2017calibration}, Platt scaling~\cite{platt1999}, beta
+calibration~\cite{kull2017beta}, isotonic regression~\cite{zadrozny2002}, and histogram
+binning~\cite{zadrozny2001}, adjust prediction scores without explicitly targeting subgroups defined
+by the original features. Multicalibration~\cite{hebert2018multicalibration} and
+multiaccuracy~\cite{kim2019multiaccuracy} extend correction to pre-specified classes of subgroups or
+auditing functions, while subgroup recalibration has also been applied to clinical risk
+models~\cite{barda2021subpopulation}. Conventional multicalibration algorithms often discretize
+prediction scores and adjust them repeatedly, introducing rounding errors and additional tuning
+choices. Jin et al.~\cite{jin2025discretization} avoid this discretization by optimizing a loss over
+shallow tree ensembles. MCGrad~\cite{tax2026mcgrad} learns boosted-tree corrections without manually
+specifying groups and uses validation-based early stopping to guard against overfitting. Its learned
+correction function and global logit rescaling can also alter predictions outside the regions being
+corrected, making individual changes harder to isolate. Other methods focus on discovering errors:
+slice-finding methods~\cite{chung2019slicefinder,sagadeeva2021sliceline} identify high-loss subsets,
+while predictive-bias scanning~\cite{zhang2016bias}, based on subset scanning~\cite{neill2012fast},
+detects miscalibrated subgroups and demonstrates refitting with the detected subgroup terms, and
+more recent work~\cite{boxer2026intersectional} audits intersectional prediction errors. In our setting,
+we restrict correction to a few individually validated subgroup rules, leaving other predictions
+unaffected, and compare the predictive benefit with the recurring cost of a larger context.
 
-Structured Scan Repair (SSR) turns this audit into a repair procedure that leaves the model unchanged. It searches the original
-features for compact subgroup rules, scores each by the exact likelihood gain of a common log-odds
-shift, validates the chosen candidate on independent data, and applies it as a shift to the model's
-logit, or abstains when the evidence is insufficient. Inference
-adds a few rule comparisons. Because it needs only logits, SSR applies equally to tuned trees,
-and Sec.~\ref{sec:general} shows that the targeted error is not specific to in-context learning.
-Where a tuned tree is accurate enough and a training pipeline is acceptable, the tree remains the
-cheaper deployment, and the repair applies to it unchanged. The context trade-off arises once an
-in-context model is chosen, for example to avoid per-dataset training: for a deployment that can
-afford only a given context size, repair buys back part of the accuracy a larger context would give,
-at near-zero recurring cost.
+We propose Structured Scan Repair (SSR), a post-hoc method that identifies subgroups with systematic
+prediction errors and selectively corrects them. SSR searches over rules defined on the original
+features, scoring each by the maximum Bernoulli log-likelihood gain from a common log-odds
+adjustment~\cite{zhang2016bias}. Candidate corrections are evaluated on selection data held out from
+discovery, and SSR applies those that meet its acceptance criteria or abstains if none qualify. The
+base model and its context remain unchanged, while inference adds only a few rule comparisons.
 
-A boosted residual corrector fitted on the same logits matches a larger context on Credit
-(\CrEqXgb{} rows) and a smaller one on the planted benchmark (\PlEqXgb), but it always intervenes and typically
-uses tens to hundreds of leaves; SSR returns a few named rules or none. Our contributions are:
+Our contributions are:
 \begin{itemize}
-\item \textbf{A context--compute trade-off for in-context tabular models} (Sec.~\ref{sec:ladder}).
-On a nested context ladder, post-hoc subgroup repair at 1{,}000 rows matches TabPFN-2.5 at
-\CrEqScan--\PlEqScan{} rows, reducing recurring CPU inference cost by
-\CrEqScanCpu--\PlEqScanCpu$\times$. The saving is hardware-dependent and largely disappears where
-inference cost is flat in context (\IclCrEqScanGpu--\IclPlEqScanGpu$\times$ for TabICLv2 on a T4).
-\item \textbf{Evidence that repair and context fix many of the same errors} (Sec.~\ref{sec:attr}). Rows
-flagged by the repair receive \PlConcLo--\PlConcHi$\times$ their share of the improvement later
-delivered by full context on the planted benchmark (\CrConcLo--\CrConcHi$\times$ on Credit) and, at
-small contexts, are moved in its direction in \CrSignLo--\CrSignHi\% of cases, against
-\PlattSignLo--\PlattSignHi\% for Platt.
-\item \textbf{Exact CPU acceleration of the repair} (Sec.~\ref{sec:systems}). Compiled, batched and
-parallel scoring speeds a fit \SpBatMin--\SpBatMax$\times$ with bit-identical rules and shifts, so a
-repair fits in seconds on one CPU core.
-\item \textbf{A validated, model-agnostic repair} (Secs.~\ref{sec:method},~\ref{sec:general}).
-Built on the predictive-bias scan score, it validates each correction on independent data, applies it
-to the base model, and abstains when no validated subgroup error exists. Across tuned XGBoost,
-CatBoost, TabPFN-2.5 and TabICLv2, a planted subgroup error survives model construction and global
-recalibration; with 9{,}600 discovery rows, the repair removes \DBiasRedLo--\DBiasRedHi\% of it in
-every model without significant average harm when nothing is planted.
+\item \textbf{A validated, model-agnostic repair method} (Secs.~\ref{sec:method},~\ref{sec:general}).
+With 9{,}600 discovery rows, SSR reduces planted subgroup residual bias by
+\DBiasRedLo--\DBiasRedHi\% across tuned XGBoost, CatBoost, TabPFN-2.5 and TabICLv2, with near-zero
+average change when no subgroup effect is planted.
+\item \textbf{A context--compute trade-off for tabular foundation models} (Sec.~\ref{sec:ladder}).
+SSR enables TabPFN-2.5 with a 1{,}000-row context to achieve predictive performance comparable to the
+uncorrected model using approximately 2{,}200 and 4{,}200 context rows on Credit Default and a
+synthetic planted-subgroup benchmark, respectively, at an estimated
+\CrEqScanCpu--\PlEqScanCpu$\times$ lower recurring CPU inference cost. The advantage depends on
+hardware and falls to \IclCrEqScanGpu--\IclPlEqScanGpu$\times$ for TabICLv2 on a T4 GPU.
+\item \textbf{Evidence that repair and additional context address overlapping errors}
+(Sec.~\ref{sec:attr}). Observations flagged by SSR account for \PlConcLo--\PlConcHi$\times$ their
+expected share of the improvement delivered by full context on the planted benchmark
+(\CrConcLo--\CrConcHi$\times$ on Credit Default). At smaller contexts, SSR moves their predictions in
+the same direction as the full-context model in \CrSignLo--\CrSignHi\% of cases, compared with
+\PlattSignLo--\PlattSignHi\% for Platt scaling.
+\item \textbf{Exact CPU acceleration of SSR fitting} (Sec.~\ref{sec:systems}). Compiled, batched and
+parallel candidate scoring accelerates fitting by \SpBatMin--\SpBatMax$\times$ without changing the
+selected rules or fitted shifts. A repair fits in seconds on a single CPU core.
 \end{itemize}
 
 %=====================================================================
@@ -294,7 +300,7 @@ using the standard correction splits of Sec.~\ref{sec:setup}.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.9\textwidth]{fig_gain_ladder.pdf}
+\includegraphics[width=0.84\textwidth]{fig_gain_ladder.pdf}
 \caption{Held-out log-loss improvement over uncorrected TabPFN-2.5 at the same context (mean and paired
 95\% CI over 10 seeds; positive is better). The panels show the planted subgroup, the matched
 no-planted-effect control, and Credit Default. Global Platt recalibration gives modest gains, whereas
@@ -360,7 +366,7 @@ compute is free.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.86\textwidth]{fig_frontier.pdf}
+\includegraphics[width=0.80\textwidth]{fig_frontier.pdf}
 \caption{Test log-loss versus recurring TabPFN-2.5 prediction cost on a 2-core CPU; labels denote
 context size. Post-hoc corrections are fitted once, so their one-time fit cost is excluded from the
 horizontal axis and their recurring cost is essentially that of the underlying context. Dotted line
@@ -560,7 +566,7 @@ analysis uses the original UCI data. Code, saved predictions and the scripts tha
 \section*{Acknowledgment}
 The author thanks Professor Scott Hazelhurst for advice on this work. This work was supported by the MADIVA
 research hub, funded by the National Institutes of Health under award U54TW012077 (DS-I Africa
-programme). The content is solely the responsibility of the author and does not necessarily
+program). The content is solely the responsibility of the author and does not necessarily
 represent the official views of the National Institutes of Health.
 
 \bibliographystyle{IEEEtran}

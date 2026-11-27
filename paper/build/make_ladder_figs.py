@@ -65,7 +65,7 @@ for ax, ds in zip(axs, ["synth8", "synth1", "credit"]):
         if not ours: eb[2][0].set_alpha(0.45)
     ax.axhline(0, color=MUTED, lw=0.8)
     ctx_axis(ax, ks, full); clean(ax); ax.set_title(DS[ds], color=INK, pad=4)
-    ax.set_xlabel("TabPFN context (labelled rows)", color=INK)
+    ax.set_xlabel("TabPFN context (labeled rows)", color=INK)
 axs[0].set_ylabel("Log-loss improvement over\nuncorrected TabPFN (×10$^{-3}$)", color=INK)
 h, l = axs[0].get_legend_handles_labels()
 fig.legend(h, l, loc="upper center", ncol=5, frameon=False, bbox_to_anchor=(0.5, 1.03), handlelength=2.2, columnspacing=1.2)
