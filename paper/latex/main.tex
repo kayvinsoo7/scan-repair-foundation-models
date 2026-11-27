@@ -29,23 +29,25 @@ kayode.adetunji1@wits.ac.za}}
 \maketitle
 
 \begin{abstract}
-Tabular foundation models such as TabPFN and TabICL predict from labeled rows supplied in context,
-so accuracy can be bought with more context, but that cost is paid again on every prediction: on a
-2-core CPU, TabPFN-2.5 takes \CpuSecOne\,s to score 1{,}000 rows from a 1{,}000-row context and
-\CpuSecFull\,s from 15{,}000. We ask when a one-time post-hoc correction can substitute for this
-recurring cost. Structured Scan Repair (SSR) searches feature-defined subgroups for a single log-odds shift
-with a large exact likelihood gain, validates each correction on held-out data, and applies a few
-readable shifts or abstains; the base model is never changed, and inference adds only a few rule
-comparisons. A repaired 1{,}000-row TabPFN-2.5 matches the unrepaired model at \CrEqScan{} rows on
-Credit Default and \PlEqScan{} rows on a planted-subgroup benchmark, making each CPU prediction
-\CrEqScanCpu--\PlEqScanCpu$\times$ cheaper than the matching context, and it preferentially flags
-observations that additional context later improves. The saving depends on how inference cost scales
-on the serving hardware: for TabICLv2 on a T4 GPU, where cost barely grows with context, it falls to
-\IclCrEqScanGpu--\IclPlEqScanGpu$\times$; and with unconstrained compute, placing the held-out labels
-in context remains more accurate. Compiled, batched scoring fits a repair in seconds on one CPU core,
-\SpBatMin--\SpBatMax$\times$ faster with bit-identical results. SSR works across tuned
-XGBoost, CatBoost, TabPFN-2.5 and TabICLv2, removing \DBiasRedLo--\DBiasRedHi\% of a planted subgroup
-error with 9{,}600 discovery rows, without significant average harm when no effect is planted.
+Tabular foundation models have recently become competitive with tuned tree-based predictors. They
+use labelled examples as context to make predictions without task-specific training. Increasing this
+context can improve predictive performance, but may also raise computational costs. An alternative is
+to improve predictions made with a smaller context by correcting errors concentrated in particular
+subgroups. This paper proposes Structured Scan Repair (SSR), a post-hoc method that uses a one-time
+repair to recover some of the predictive benefit of a larger context, without requiring that larger
+context at every prediction. SSR searches for such subgroups using rules on the original features,
+validates candidate corrections on held-out data, and applies a few interpretable log-odds
+adjustments or abstains, leaving the underlying model unchanged. We show that SSR enables TabPFN-2.5
+with a 1{,}000-row context to achieve predictive performance comparable to the uncorrected model
+using about 2{,}200 and 4{,}200 context rows on Credit Default and a synthetic planted-subgroup
+benchmark, respectively, at an estimated \CrEqScanCpu--\PlEqScanCpu$\times$ lower recurring CPU
+inference cost. Across tuned XGBoost, CatBoost, TabPFN-2.5, and TabICLv2, SSR reduces planted
+subgroup residual bias by \DBiasRedLo--\DBiasRedHi\% when sufficient discovery data are available.
+Compiled, batched, and parallel scoring accelerates repair fitting by \SpBatMin--\SpBatMax$\times$
+on CPU without changing the selected corrections. The inference-cost advantage is hardware-dependent,
+falling to \IclCrEqScanGpu--\IclPlEqScanGpu$\times$ for TabICLv2 on a T4 GPU. These findings
+highlight the conditions under which targeted subgroup repair can offer a computationally efficient
+alternative to increasing foundation-model context.
 \end{abstract}
 
 \begin{IEEEkeywords}
